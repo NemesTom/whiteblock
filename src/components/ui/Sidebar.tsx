@@ -2,8 +2,17 @@
 
 import { useState } from 'react';
 import { useEngineStore, selectMetrics } from '@/store/useEngineStore';
+import { animClock } from '@/lib/animClock';
 import { BASE_ENGINES, ENGINE_STOCK_BOOST_PSI, displacementCc } from '@/lib/physics';
 import { firingOrderLabel } from '@/components/canvas/parts/engineGeometry';
+import {
+  deleteBuild,
+  loadSavedBuilds,
+  parseBuildJson,
+  saveBuild,
+  snapshotSelection,
+  type SavedBuild,
+} from '@/lib/configIO';
 import { Accordion, OptionButton } from './Accordion';
 
 const FOCUS: Record<string, string> = {
@@ -19,6 +28,11 @@ export function Sidebar() {
   const s = useEngineStore();
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
   const [fallbackText, setFallbackText] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importErrors, setImportErrors] = useState<string[]>([]);
+  const [saveName, setSaveName] = useState('');
+  const [savedBuilds, setSavedBuilds] = useState<SavedBuild[]>(() => loadSavedBuilds());
 
   const pick = (patch: Parameters<typeof s.set>[0], focusKey: string) => {
     s.set({ ...patch, focusedPart: FOCUS[focusKey] ?? null });
@@ -30,27 +44,7 @@ export function Sidebar() {
     const m = selectMetrics(st);
     return JSON.stringify(
       {
-        selection: {
-          engineId: st.engineId,
-          rodsId: st.rodsId,
-          headId: st.headId,
-          turboId: st.turboId,
-          manifoldId: st.manifoldId,
-          transmissionId: st.transmissionId,
-          sleevesId: st.sleevesId,
-          tuneId: st.tuneId,
-          clutchId: st.clutchId,
-          transCoolerId: st.transCoolerId,
-          converterId: st.converterId,
-          injectorId: st.injectorId,
-          fuelPumpId: st.fuelPumpId,
-          intercoolerId: st.intercoolerId,
-          downpipeId: st.downpipeId,
-          studsId: st.studsId,
-          valveSpringsId: st.valveSpringsId,
-          boostPsi: st.boostPsi,
-          animRpm: st.animRpm,
-        },
+        selection: snapshotSelection(st),
         result: {
           status: st.status,
           statusMessage: st.statusMessage,
@@ -63,6 +57,29 @@ export function Sidebar() {
       null,
       2,
     );
+  };
+
+  /** Apply a validated selection (import or saved build). */
+  const applySelection = (sel: ReturnType<typeof snapshotSelection>) => {
+    animClock.jumpTo(sel.animRpm);
+    s.set({ ...sel, focusedPart: null });
+  };
+
+  const applyImport = () => {
+    const parsed = parseBuildJson(importText);
+    if (!parsed.ok) {
+      setImportErrors(parsed.errors);
+      return;
+    }
+    applySelection(parsed.selection);
+    setImportOpen(false);
+    setImportText('');
+    setImportErrors([]);
+  };
+
+  const handleSave = () => {
+    setSavedBuilds(saveBuild(saveName, snapshotSelection(useEngineStore.getState())));
+    setSaveName('');
   };
 
   /** Synchronous legacy copy — must run inside the click gesture. */
@@ -123,6 +140,17 @@ export function Sidebar() {
             title="Copy the full build (all components + status + peaks) as JSON for bug reports"
           >
             {copyState === 'copied' ? 'Copied!' : copyState === 'error' ? 'Copy failed — see below' : 'Copy build JSON'}
+          </button>
+          <button
+            onClick={() => {
+              setImportText('');
+              setImportErrors([]);
+              setImportOpen(true);
+            }}
+            className="rounded bg-zinc-800 px-2 py-1 text-xs hover:bg-zinc-700"
+            title="Paste a build JSON to load it"
+          >
+            Import
           </button>
         </div>
         {fallbackText !== null && (
@@ -328,8 +356,82 @@ export function Sidebar() {
         <OptionButton active={s.tuneId === 'stock'} label="Stock tune · factory boost" onClick={() => pick({ tuneId: 'stock' }, 'ecu')} />
         <OptionButton active={s.tuneId === 'stage1'} label="Stage 1 · +6% timing" onClick={() => pick({ tuneId: 'stage1' }, 'ecu')} />
         <OptionButton active={s.tuneId === 'stage2'} label="Stage 2 · +12% · limiter 8000" onClick={() => pick({ tuneId: 'stage2' }, 'ecu')} />
-        <OptionButton active={s.tuneId === 'stage3'} label="Stage 3 MaxxECU standalone" sub="+18% · 35 psi · limiter 8500 · needs EV14-1000+ & 450 pump" onClick={() => pick({ tuneId: 'stage3' }, 'ecu')} />
+        <OptionButton active={s.tuneId === 'stage3'} label="Stage 3 MaxxECU standalone" sub="Unlocks 35 psi · 8500 limiter — feed it or melt it" onClick={() => pick({ tuneId: 'stage3' }, 'ecu')} />
       </Accordion>
+
+      <Accordion title="Saved builds">
+        <div className="mb-2 flex gap-1.5">
+          <input
+            value={saveName}
+            onChange={(e) => setSaveName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSave();
+            }}
+            placeholder="Build name…"
+            maxLength={40}
+            className="min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 placeholder:text-zinc-500"
+            aria-label="Build name"
+          />
+          <button onClick={handleSave} className="rounded bg-sky-700 px-2 py-1 text-xs font-semibold hover:bg-sky-600">
+            Save
+          </button>
+        </div>
+        {savedBuilds.length === 0 && <p className="text-[11px] text-zinc-500">No saved builds yet — name the current setup and hit Save.</p>}
+        {savedBuilds.map((b) => (
+          <div key={b.name} className="mb-1.5 flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5">
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-xs font-semibold text-zinc-100">{b.name}</div>
+              <div className="truncate font-mono text-[10px] text-zinc-500">
+                {b.selection.engineId} · {b.selection.turboId} · {b.selection.tuneId}
+              </div>
+            </div>
+            <button
+              onClick={() => applySelection(b.selection)}
+              className="rounded bg-zinc-700 px-2 py-0.5 text-[11px] hover:bg-zinc-600"
+            >
+              Load
+            </button>
+            <button
+              onClick={() => setSavedBuilds(deleteBuild(b.name))}
+              className="rounded bg-zinc-700 px-2 py-0.5 text-[11px] text-red-300 hover:bg-zinc-600"
+              aria-label={`Delete ${b.name}`}
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </Accordion>
+
+      {importOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-label="Import build JSON">
+          <div className="w-full max-w-md rounded-xl border border-zinc-700 bg-zinc-900 p-4">
+            <h2 className="mb-2 text-sm font-bold text-zinc-100">Import build JSON</h2>
+            <p className="mb-2 text-[11px] text-zinc-400">Paste the output of “Copy build JSON”. Unknown values are rejected, rpm/boost are clamped.</p>
+            <textarea
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              rows={10}
+              placeholder='{"selection": {...}}'
+              className="w-full rounded border border-zinc-700 bg-black p-2 font-mono text-[10px] text-zinc-200"
+            />
+            {importErrors.length > 0 && (
+              <ul className="mt-2 max-h-32 overflow-y-auto rounded border border-red-700 bg-red-950/40 p-2 text-[11px] text-red-300">
+                {importErrors.map((e) => (
+                  <li key={e}>• {e}</li>
+                ))}
+              </ul>
+            )}
+            <div className="mt-2 flex justify-end gap-2">
+              <button onClick={() => setImportOpen(false)} className="rounded bg-zinc-700 px-3 py-1 text-xs hover:bg-zinc-600">
+                Cancel
+              </button>
+              <button onClick={applyImport} className="rounded bg-sky-700 px-3 py-1 text-xs font-semibold hover:bg-sky-600">
+                Apply build
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }
