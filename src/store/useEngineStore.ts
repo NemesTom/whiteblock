@@ -5,6 +5,7 @@ import {
   BASE_ENGINES,
   ROD_LENGTH_MM,
   ROD_LIMIT_WHP,
+  TRANS_EFF,
   TURBO_MAX_SHAFT,
   displacementCc,
   dynoCurve,
@@ -71,8 +72,8 @@ export function evaluateFailure(sel: EngineSelection): { status: EngineStatus; m
   if (engine.boreMm >= 83 && hp > 350 && sel.sleevesId === 'stock') {
     return { status: 'FAILED_CRACKED_BLOCK', message: 'Thin 83mm cylinder walls cracked above 350 WHP on stock sleeves. Add shims or Darton sleeves.' };
   }
-  // Rule C — T6 glass cannon
-  if (sel.engineId === 'B6284T' && sel.transmissionId === 'gm-4t65e' && sel.tuneId === 'stage2') {
+  // Rule C — T6 glass cannon (both 2.8 and 2.9 twin-turbo sixes)
+  if ((sel.engineId === 'B6284T' || sel.engineId === 'B6294T') && sel.transmissionId === 'gm-4t65e' && sel.tuneId === 'stage2') {
     return { status: 'FAILED_EXPLODED_GEARBOX', message: 'Stage 2 T6 torque exploded the stock transverse GM 4T65-E gearbox.' };
   }
   // AW55 auto limit without cooler
@@ -137,6 +138,7 @@ export function selectMetrics(sel: EngineSelection) {
   const failed = evaluateFailure(sel).status !== 'OK';
   const peak = curve.reduce((a, b) => (b.hp > a.hp ? b : a), curve[0]);
   const peakCrank = curve.reduce((a, b) => (b.hpCrank > a.hpCrank ? b : a), curve[0]);
+  const lossPct = Math.round((1 - TRANS_EFF[sel.transmissionId]) * 100);
   return {
     displacementCc: disp,
     compressionRatio: engine.compressionRatio,
@@ -147,6 +149,8 @@ export function selectMetrics(sel: EngineSelection) {
     maxTqNm: failed ? 0 : Math.max(...curve.map((p) => p.tqNm)),
     peakHpRpm: peak.rpm,
     peakCrankHpRpm: peakCrank.rpm,
+    drivetrainLossPct: lossPct,
+    drivetrainLossHp: failed ? 0 : peakCrank.hpCrank - peak.hp,
     curve: failed ? curve.map((p) => ({ ...p, hp: 0, hpCrank: 0, tqNm: 0 })) : curve,
   };
 }

@@ -3,7 +3,15 @@
  * All engine parameters, component models and chart datasets are explicit.
  */
 
-export type EngineId = 'B5234T3' | 'B5254T4' | 'B4194T' | 'B6284T';
+export type EngineId =
+  | 'B5234T3'
+  | 'B5244T3'
+  | 'B5244T5'
+  | 'B5254T2'
+  | 'B5254T4'
+  | 'B4194T'
+  | 'B6284T'
+  | 'B6294T';
 
 export type RodsId = 'stock-n' | 'stock-rn' | 'forged-h';
 export type HeadId = 'stock-n' | 'rn-swap';
