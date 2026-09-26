@@ -38,6 +38,7 @@ export function CameraRig() {
     }
   }, [focusedPart, camera, controls]);
 
+  /* eslint-disable react-hooks/immutability -- intentional imperative three.js camera shake, not React state */
   useFrame(() => {
     if (status.startsWith('FAILED')) {
       shake.current += 0.35;
@@ -45,5 +46,6 @@ export function CameraRig() {
       camera.position.y += Math.cos(shake.current * 2.7) * 0.01;
     }
   });
+  /* eslint-enable react-hooks/immutability */
   return null;
 }

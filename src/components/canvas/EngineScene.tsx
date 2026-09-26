@@ -11,6 +11,7 @@ import { TurboAssembly } from './parts/TurboAssembly';
 import { TransmissionAssembly } from './parts/TransmissionAssembly';
 import { CutGizmo } from './parts/CutGizmo';
 import { CameraRig } from './CameraRig';
+import { CanvasErrorBoundary } from './CanvasErrorBoundary';
 
 /**
  * Engine viewport: composes the procedural whiteblock assemblies.
@@ -21,8 +22,13 @@ export function EngineScene() {
 
   return (
     <div className="relative h-full w-full bg-gradient-to-b from-zinc-900 to-black">
+      <CanvasErrorBoundary>
       <Canvas
         gl={{ localClippingEnabled: true, antialias: true }}
+        onCreated={({ gl }) => {
+          // Set imperatively: the only cutaway switch the renderer honors.
+          gl.localClippingEnabled = true;
+        }}
         camera={{ position: [4.2, 3.4, 4.2], fov: 45 }}
         dpr={[1, 2]}
       >
@@ -43,6 +49,7 @@ export function EngineScene() {
         <CameraRig />
         <OrbitControls makeDefault enableDamping dampingFactor={0.08} maxDistance={14} minDistance={1.5} />
       </Canvas>
+      </CanvasErrorBoundary>
     </div>
   );
 }

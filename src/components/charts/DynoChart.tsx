@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Line } from 'react-chartjs-2';
 import {
   CategoryScale,
@@ -150,9 +150,13 @@ export function DynoChart() {
 
   const peakHp = m.curve.reduce((a, b) => (b.hp > a.hp ? b : a), m.curve[0]);
   const peakTq = m.curve.reduce((a, b) => (b.tqNm > a.tqNm ? b : a), m.curve[0]);
-  cursorRef.rpm = liveRpm;
-  cursorRef.peakHp = { x: peakHp.rpm, y: peakHp.hp };
-  cursorRef.peakTq = { x: peakTq.rpm, y: peakTq.tqNm };
+  // Overlay plugin reads this mutable singleton at draw time; assigned in
+  // an effect so render stays pure.
+  useEffect(() => {
+    cursorRef.rpm = liveRpm;
+    cursorRef.peakHp = { x: peakHp.rpm, y: peakHp.hp };
+    cursorRef.peakTq = { x: peakTq.rpm, y: peakTq.tqNm };
+  });
 
   const data = {
     labels: m.curve.map((p) => p.rpm),

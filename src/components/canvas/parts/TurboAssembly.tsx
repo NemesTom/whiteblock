@@ -21,6 +21,7 @@ export function TurboAssembly({ plane }: { plane: THREE.Plane }) {
   const rodsId = useEngineStore((s) => s.rodsId);
   const turboId = useEngineStore((s) => s.turboId);
   const manifoldId = useEngineStore((s) => s.manifoldId);
+  const cutaway = useEngineStore((s) => s.cutaway);
   const maxHp = useEngineStore((s) => maxHorsepower(s));
 
   const engine = BASE_ENGINES[engineId];
@@ -43,7 +44,7 @@ export function TurboAssembly({ plane }: { plane: THREE.Plane }) {
           metalness: 0.85,
           roughness: 0.35,
         }),
-        plane,
+        cutaway ? plane : null,
       ),
       turbine: new THREE.MeshStandardMaterial({
         color: '#4a423c',
@@ -57,7 +58,7 @@ export function TurboAssembly({ plane }: { plane: THREE.Plane }) {
       dark: new THREE.MeshStandardMaterial({ color: '#26282c', metalness: 0.7, roughness: 0.45 }),
       brass: new THREE.MeshStandardMaterial({ color: '#b08d3f', metalness: 0.9, roughness: 0.3 }),
     }),
-    [plane, hot, manifoldId],
+    [plane, cutaway, hot, manifoldId],
   );
 
   useEffect(

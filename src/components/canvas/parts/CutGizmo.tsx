@@ -13,15 +13,17 @@ export function CutGizmo() {
   const axis = useEngineStore((s) => s.cutawayAxis);
   const offset = useEngineStore((s) => s.cutawayOffset);
 
-  if (!cutaway) return null;
-
-  const size: [number, number] =
-    axis === 'x' ? [2.4, 3.0] : axis === 'y' ? [3.8, 2.4] : [3.8, 3.0];
-  const edges = useMemo(() => new THREE.EdgesGeometry(new THREE.PlaneGeometry(size[0], size[1])), [size[0], size[1]]);
+  // All hooks run unconditionally — the early return sits below them, so
+  // toggling cutaway never changes the hook count (that crashed the tab).
+  const sizeW = axis === 'x' ? 2.4 : 3.8;
+  const sizeH = axis === 'x' ? 3.0 : 2.4;
+  const size: [number, number] = [sizeW, sizeH];
+  const edges = useMemo(() => new THREE.EdgesGeometry(new THREE.PlaneGeometry(sizeW, sizeH)), [sizeW, sizeH]);
 
   useEffect(() => () => edges.dispose(), [edges]);
 
   if (!cutaway) return null;
+
   const position: [number, number, number] =
     axis === 'x' ? [offset, 1.1, 0] : axis === 'y' ? [0, offset, 0] : [0, 1.1, offset];
   const rotation: [number, number, number] =
