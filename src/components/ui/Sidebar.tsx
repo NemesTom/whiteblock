@@ -1,7 +1,8 @@
 'use client';
 
 import { useEngineStore } from '@/store/useEngineStore';
-import { BASE_ENGINES, ENGINE_STOCK_BOOST_PSI } from '@/lib/physics';
+import { BASE_ENGINES, ENGINE_STOCK_BOOST_PSI, displacementCc } from '@/lib/physics';
+import { firingOrderLabel } from '@/components/canvas/parts/engineGeometry';
 import { Accordion, OptionButton } from './Accordion';
 
 const FOCUS: Record<string, string> = {
@@ -34,7 +35,12 @@ export function Sidebar() {
       </div>
 
       <Accordion title="Engine Block" defaultOpen>
-        {(Object.keys(BASE_ENGINES) as (keyof typeof BASE_ENGINES)[]).map((id) => (
+        {(
+          Object.keys(BASE_ENGINES) as (keyof typeof BASE_ENGINES)[]
+        )
+          .slice()
+          .sort((a, b) => displacementCc(BASE_ENGINES[a].boreMm, BASE_ENGINES[a].strokeMm, BASE_ENGINES[a].cylinders) - displacementCc(BASE_ENGINES[b].boreMm, BASE_ENGINES[b].strokeMm, BASE_ENGINES[b].cylinders))
+          .map((id) => (
           <OptionButton
             key={id}
             active={s.engineId === id}
@@ -44,7 +50,12 @@ export function Sidebar() {
               pick(
                 {
                   engineId: id,
-                  transmissionId: id === 'B6284T' ? 'gm-4t65e' : s.transmissionId === 'gm-4t65e' ? 'm56' : s.transmissionId,
+                  transmissionId:
+                    id === 'B6284T' || id === 'B6294T'
+                      ? 'gm-4t65e'
+                      : s.transmissionId === 'gm-4t65e'
+                        ? 'm56'
+                        : s.transmissionId,
                 },
                 'block',
               )
@@ -64,6 +75,9 @@ export function Sidebar() {
       </Accordion>
 
       <Accordion title="Internals (Bottom End)">
+        <div className="mb-2 font-mono text-[11px] text-zinc-500">
+          Firing order: {firingOrderLabel(BASE_ENGINES[s.engineId].cylinders)}
+        </div>
         {(
           [
             ['stock-n', 'Stock N-Rods 139.5mm · limit 300 WHP · revs to 7000'],
@@ -119,9 +133,9 @@ export function Sidebar() {
       </Accordion>
 
       <Accordion title="Transmission">
-        <OptionButton active={s.transmissionId === 'm56'} label="M56 5-spd manual · bulletproof" sub="Limit 500 WHP w/ Spec Stage 3" onClick={() => pick({ transmissionId: 'm56' }, 'transmission')} />
-        <OptionButton active={s.transmissionId === 'aw55'} label="AW55-50SN 5-spd auto" sub="Fails >320 WHP w/o cooler" onClick={() => pick({ transmissionId: 'aw55' }, 'transmission')} />
-        <OptionButton active={s.transmissionId === 'gm-4t65e'} label="GM 4T65-E (T6 stock)" sub="Glass cannon on Stage 2" onClick={() => pick({ transmissionId: 'gm-4t65e' }, 'transmission')} />
+        <OptionButton active={s.transmissionId === 'm56'} label="M56 5-spd manual · bulletproof · eats ~12%" sub="Limit 500 WHP w/ Spec Stage 3" onClick={() => pick({ transmissionId: 'm56' }, 'transmission')} />
+        <OptionButton active={s.transmissionId === 'aw55'} label="AW55-50SN 5-spd auto · eats ~15%" sub="Fails >320 WHP w/o cooler" onClick={() => pick({ transmissionId: 'aw55' }, 'transmission')} />
+        <OptionButton active={s.transmissionId === 'gm-4t65e'} label="GM 4T65-E (T6 stock) · eats ~17%" sub="Glass cannon on Stage 2" onClick={() => pick({ transmissionId: 'gm-4t65e' }, 'transmission')} />
         <div className="mt-2 text-xs font-semibold text-zinc-300">Clutch / Cooler</div>
         <OptionButton active={s.clutchId === 'stock'} label="Stock clutch" onClick={() => s.set({ clutchId: 'stock' })} />
         <OptionButton active={s.clutchId === 'spec-stage3'} label="Spec Stage 3 clutch" onClick={() => s.set({ clutchId: 'spec-stage3' })} />

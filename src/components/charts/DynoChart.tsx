@@ -145,15 +145,16 @@ export function DynoChart() {
     [cfg],
   );
 
-  // Ghosted stock baseline for the same engine.
+  // Ghosted stock baseline for the same engine (K24 cars need their manifold).
   const baseline = useMemo(() => {
     const stockTurbo = ENGINE_STOCK_TURBO[engineId];
+    const needsJapanifold = stockTurbo === 'k24';
     return dynoCurve({
       engineId,
       rodsId: 'stock-n',
       headId: 'stock-n',
       turboId: stockTurbo,
-      manifoldId: engineId === 'B5254T4' ? 'japanifold-s60r' : 'stock',
+      manifoldId: needsJapanifold ? 'japanifold-s60r' : 'stock',
       transmissionId: 'm56',
       sleevesId: 'stock',
       tuneId: 'stock',
@@ -244,7 +245,7 @@ export function DynoChart() {
 
   return (
     <div className="flex h-full flex-col bg-zinc-950 text-zinc-100">
-      <div className="grid grid-cols-2 gap-2 px-4 pt-2 text-xs sm:grid-cols-8">
+      <div className="grid grid-cols-2 gap-2 px-4 pt-2 text-xs sm:grid-cols-9">
         <Metric label="Displacement" value={`${m.displacementCc} cc`} />
         <Metric label="Compression" value={`${engine.compressionRatio}:1`} />
         <Metric label="Rod/Stroke" value={String(m.rodStrokeRatio)} />
@@ -253,6 +254,7 @@ export function DynoChart() {
         <Metric label="Engine speed" value={`${Math.round(liveRpm)} rpm`} />
         <Metric label="Peak wheel" value={`${m.maxHp} WHP @ ${m.peakHpRpm}`} highlight />
         <Metric label="Peak crank" value={`${m.maxCrankHp} hp @ ${m.peakCrankHpRpm}`} />
+        <Metric label="Drivetrain loss" value={`${m.drivetrainLossPct}% · −${m.drivetrainLossHp} hp`} />
       </div>
       <div className="flex items-center gap-1.5 px-4 pb-1 pt-1">
         <span className="text-[10px] uppercase tracking-wide text-zinc-500">Lines:</span>
