@@ -21,6 +21,7 @@ import { cylX, deckY, engineLength, firingPhase } from './engineGeometry';
 export function HeadAssembly({ plane }: { plane: THREE.Plane }) {
   const engineId = useEngineStore((s) => s.engineId);
   const rodsId = useEngineStore((s) => s.rodsId);
+  const cutaway = useEngineStore((s) => s.cutaway);
   const isRN = useEngineStore((s) => s.headId) === 'rn-swap';
 
   const engine = BASE_ENGINES[engineId];
@@ -30,22 +31,23 @@ export function HeadAssembly({ plane }: { plane: THREE.Plane }) {
   const headBase = deck + 0.05;
 
   const lobeRefs = useRef<Array<THREE.Group | null>>([]);
+  const cut = cutaway ? plane : null;
 
   const mats = useMemo(
     () => ({
-      head: clip(new THREE.MeshStandardMaterial({ color: '#a7aeb6', metalness: 0.7, roughness: 0.42 }), plane),
+      head: clip(new THREE.MeshStandardMaterial({ color: '#a7aeb6', metalness: 0.7, roughness: 0.42 }), cut),
       cover: clip(
         new THREE.MeshStandardMaterial({ color: isRN ? '#b9bec5' : '#c8ccd2', metalness: 0.8, roughness: 0.32 }),
-        plane,
+        cut,
       ),
       cam: new THREE.MeshStandardMaterial({ color: '#7d838b', metalness: 0.95, roughness: 0.22 }),
       valve: new THREE.MeshStandardMaterial({ color: '#d9dee3', metalness: 0.95, roughness: 0.2 }),
       spring: new THREE.MeshStandardMaterial({ color: '#3a3d42', metalness: 0.85, roughness: 0.35 }),
       plastic: new THREE.MeshStandardMaterial({ color: '#1d1f22', metalness: 0.2, roughness: 0.6 }),
-      plenum: clip(new THREE.MeshStandardMaterial({ color: '#8f979f', metalness: 0.75, roughness: 0.4 }), plane),
+      plenum: clip(new THREE.MeshStandardMaterial({ color: '#8f979f', metalness: 0.75, roughness: 0.4 }), cut),
       brass: new THREE.MeshStandardMaterial({ color: '#b08d3f', metalness: 0.9, roughness: 0.3 }),
     }),
-    [plane, isRN],
+    [cut, isRN],
   );
 
   useEffect(

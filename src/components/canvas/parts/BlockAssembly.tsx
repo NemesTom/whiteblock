@@ -18,6 +18,7 @@ import { boreR, cylX, deckY, engineLength, CYL_SPACING } from './engineGeometry'
 export function BlockAssembly({ plane }: { plane: THREE.Plane }) {
   const engineId = useEngineStore((s) => s.engineId);
   const rodsId = useEngineStore((s) => s.rodsId);
+  const cutaway = useEngineStore((s) => s.cutaway);
   const cracked = useEngineStore((s) => s.status) === 'FAILED_CRACKED_BLOCK';
 
   const engine = BASE_ENGINES[engineId];
@@ -27,22 +28,23 @@ export function BlockAssembly({ plane }: { plane: THREE.Plane }) {
   const br = boreR(engineId);
 
   const mats = useMemo(() => {
+    const cut = cutaway ? plane : null;
     const m = {
       alu: clip(
         new THREE.MeshStandardMaterial({ color: cracked ? '#8a2a2a' : '#99a2ac', metalness: 0.7, roughness: 0.45 }),
-        plane,
+        cut,
       ),
-      deck: clip(new THREE.MeshStandardMaterial({ color: '#c9ced4', metalness: 0.85, roughness: 0.3 }), plane),
-      sump: clip(new THREE.MeshStandardMaterial({ color: '#2e3236', metalness: 0.6, roughness: 0.55 }), plane),
+      deck: clip(new THREE.MeshStandardMaterial({ color: '#c9ced4', metalness: 0.85, roughness: 0.3 }), cut),
+      sump: clip(new THREE.MeshStandardMaterial({ color: '#2e3236', metalness: 0.6, roughness: 0.55 }), cut),
       liner: clip(
         new THREE.MeshStandardMaterial({ color: '#4b4f55', metalness: 0.9, roughness: 0.35 }),
-        plane,
+        cut,
       ),
       hard: new THREE.MeshStandardMaterial({ color: '#6b7280', metalness: 0.9, roughness: 0.3 }),
       dark: new THREE.MeshStandardMaterial({ color: '#1f2124', metalness: 0.5, roughness: 0.6 }),
     };
     return m;
-  }, [plane, cracked]);
+  }, [plane, cutaway, cracked]);
 
   useEffect(
     () => () => {

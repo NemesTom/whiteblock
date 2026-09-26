@@ -14,6 +14,8 @@ export function useCutPlane(): THREE.Plane {
   const offset = useEngineStore((s) => s.cutawayOffset);
   const flip = useEngineStore((s) => s.cutawayFlip);
 
+  // The plane object is shared with every casting material: mutating it
+  // in place moves the cut without rebuilding materials (not React state).
   useEffect(() => {
     const dir =
       axis === 'x'
@@ -23,6 +25,7 @@ export function useCutPlane(): THREE.Plane {
           : new THREE.Vector3(0, 0, 1);
     if (flip) {
       plane.normal.copy(dir);
+      // eslint-disable-next-line react-hooks/immutability -- shared three.js Plane, not React state
       plane.constant = -offset;
     } else {
       plane.normal.copy(dir).negate();
@@ -33,9 +36,13 @@ export function useCutPlane(): THREE.Plane {
   return plane;
 }
 
-/** Attach the cut plane to a casting material (DoubleSide reads solid). */
-export function clip<T extends THREE.Material>(mat: T, plane: THREE.Plane): T {
-  mat.clippingPlanes = [plane];
+/**
+ * Attach the cut plane to a casting material (DoubleSide reads solid).
+ * Pass null to leave the material whole — clipping planes are only
+ * attached while cutaway mode is on, so the default view is a whole engine.
+ */
+export function clip<T extends THREE.Material>(mat: T, plane: THREE.Plane | null): T {
+  mat.clippingPlanes = plane ? [plane] : null;
   mat.clipShadows = true;
   mat.side = THREE.DoubleSide;
   return mat;
