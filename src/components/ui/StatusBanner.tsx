@@ -5,6 +5,10 @@ import { useEngineStore } from '@/store/useEngineStore';
 const COLORS: Record<string, string> = {
   OK: 'bg-emerald-600',
   FAILED_BENT_RODS: 'bg-red-600',
+  FAILED_THROWN_ROD: 'bg-red-600',
+  FAILED_DROPPED_VALVE: 'bg-red-600',
+  FAILED_OIL_PUMP: 'bg-red-600',
+  FAILED_TURBO_OVERSPEED: 'bg-red-600',
   FAILED_CRACKED_BLOCK: 'bg-red-600',
   FAILED_EXPLODED_GEARBOX: 'bg-red-600',
   FAILED_OVERWHELMED_TRANS: 'bg-orange-500',

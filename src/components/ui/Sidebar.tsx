@@ -66,9 +66,9 @@ export function Sidebar() {
       <Accordion title="Internals (Bottom End)">
         {(
           [
-            ['stock-n', 'Stock N-Rods 139.5mm · limit 300 WHP'],
-            ['stock-rn', 'Stock RN-Rods 147.0mm · ratio 1.63 · limit 350 WHP'],
-            ['forged-h', 'Forged H-Beams · 800+ WHP · required >18psi'],
+            ['stock-n', 'Stock N-Rods 139.5mm · limit 300 WHP · revs to 7000'],
+            ['stock-rn', 'Stock RN-Rods 147.0mm · ratio 1.63 · limit 350 WHP · revs to 7200'],
+            ['forged-h', 'Forged H-Beams · 800+ WHP · required >18psi · revs to 8500'],
           ] as const
         ).map(([id, label]) => (
           <OptionButton key={id} active={s.rodsId === id} label={label} onClick={() => pick({ rodsId: id }, 'internals')} />
@@ -76,8 +76,8 @@ export function Sidebar() {
       </Accordion>
 
       <Accordion title="Top End (Cylinder Head)">
-        <OptionButton active={s.headId === 'stock-n'} label="Stock N-Head · VE 85%" sub="Hydraulic lifters" onClick={() => pick({ headId: 'stock-n' }, 'head')} />
-        <OptionButton active={s.headId === 'rn-swap'} label="RN-Head Swap · VE 95%" sub="Solid lifters · powerband +500 RPM" onClick={() => pick({ headId: 'rn-swap' }, 'head')} />
+        <OptionButton active={s.headId === 'stock-n'} label="Stock N-Head · VE 85% · revs to 7000" sub="Hydraulic lifters" onClick={() => pick({ headId: 'stock-n' }, 'head')} />
+        <OptionButton active={s.headId === 'rn-swap'} label="RN-Head Swap · VE 95% · revs to 7800" sub="Solid lifters · powerband +500 RPM" onClick={() => pick({ headId: 'rn-swap' }, 'head')} />
       </Accordion>
 
       <Accordion title="Turbocharger & Exhaust" defaultOpen>
