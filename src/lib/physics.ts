@@ -587,10 +587,15 @@ export function fuelDemandHp(sel: EngineSelection): number {
   return dynoCurve(sel).reduce((a, b) => (b.hpCrank > a.hpCrank ? b : a), { hpCrank: 0 } as DynoPoint).hpCrank;
 }
 
-/** Injector duty (fraction) at peak demand vs. the weaker fuel link. */
+/**
+ * Injector duty (fraction) at peak demand, relative to the INJECTORS.
+ * A bigger pump never lowers duty — it only decides whether the demanded
+ * flow can be delivered at all (see the lean rule). Smaller injectors work
+ * harder for the same fuel mass, so duty now actually responds to size.
+ */
 export function injectorDuty(sel: EngineSelection): number {
   const demand = fuelDemandHp(sel);
-  const cap = Math.min(injectorCapHp(sel), FUEL_PUMP_CAP_HP[sel.fuelPumpId]);
+  const cap = injectorCapHp(sel);
   return demand / (cap / 0.8);
 }
 
