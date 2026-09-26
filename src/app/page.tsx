@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Sidebar } from '@/components/ui/Sidebar';
 import { CutawayToggle, CutawayPanel } from '@/components/ui/CutawayToggle';
 import { AnimControls } from '@/components/ui/AnimControls';
+import { EngineLineart } from '@/components/ui/EngineLineart';
 import { StatusBanner } from '@/components/ui/StatusBanner';
 import { DynoChart } from '@/components/charts/DynoChart';
 import { EngineScene } from '@/components/canvas/EngineScene';
@@ -25,6 +26,7 @@ export default function Page() {
             <CutawayPanel />
           </div>
           <AnimControls />
+          <EngineLineart />
           <EngineScene />
         </div>
       </div>
