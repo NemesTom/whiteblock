@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { BASE_ENGINES } from '@/lib/physics';
+import { BASE_ENGINES, effectiveGeometry } from '@/lib/physics';
 import { useEngineStore } from '@/store/useEngineStore';
 import { animClock } from '@/lib/animClock';
 import {
@@ -35,14 +35,17 @@ import { maxRpm } from '@/lib/physics';
 export function RotatingAssembly() {
   const engineId = useEngineStore((s) => s.engineId);
   const rodsId = useEngineStore((s) => s.rodsId);
+  const crankId = useEngineStore((s) => s.crankId);
+  const pistonsId = useEngineStore((s) => s.pistonsId);
   const rodsFailed = useEngineStore((s) => s.status === 'FAILED_BENT_RODS' || s.status === 'FAILED_THROWN_ROD');
 
   const engine = BASE_ENGINES[engineId];
   const n = engine.cylinders;
   const len = engineLength(n);
-  const r = crankThrow(engineId);
+  const geo = effectiveGeometry({ engineId, crankId, pistonsId });
+  const r = crankThrow(engineId, geo.strokeMm);
   const rodL = rodUnits(rodsId);
-  const br = boreR(engineId);
+  const br = boreR(engineId, geo.boreMm);
   const forged = rodsId === 'forged-h';
 
   const crankRef = useRef<THREE.Group>(null);
@@ -122,7 +125,8 @@ export function RotatingAssembly() {
 
     if (crankRef.current) crankRef.current.rotation.x = angle;
 
-    const rr = crankThrow(st.engineId);
+    const geoFrame = effectiveGeometry(st);
+    const rr = crankThrow(st.engineId, geoFrame.strokeMm);
     const ll = rodUnits(st.rodsId);
     const highlight = st.cycleHighlight && !failedNow;
     for (let i = 0; i < eng.cylinders; i++) {
@@ -146,7 +150,7 @@ export function RotatingAssembly() {
   const rodMat = rodsFailed ? mats.rodFail : mats.rod;
 
   return (
-    <group key={`${engineId}-${rodsId}`}>
+    <group key={`${engineId}-${rodsId}-${crankId}-${pistonsId}`}>
       {/* ===== Crankshaft (rigid group, rotates about X) ===== */}
       <group ref={crankRef} position={[0, Y_CRANK, 0]}>
         {/* Main journals */}

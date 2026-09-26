@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { useEngineStore, selectMetrics } from '@/store/useEngineStore';
 import { animClock } from '@/lib/animClock';
-import { BASE_ENGINES, ENGINE_STOCK_BOOST_PSI, displacementCc } from '@/lib/physics';
-import { firingOrderLabel } from '@/components/canvas/parts/engineGeometry';
+import { BASE_ENGINES, ENGINE_STOCK_BOOST_PSI, STROKER_MM, displacementCc } from '@/lib/physics';
+import { deckHeightMm, firingOrderLabel, tdcPinHeightMm } from '@/components/canvas/parts/engineGeometry';
+import type { EngineId, EngineSelection } from '@/types/engine';
 import {
   deleteBuild,
   loadSavedBuilds,
@@ -23,6 +24,22 @@ const FOCUS: Record<string, string> = {
   transmission: 'transmission',
   ecu: 'head',
 };
+
+/** Stroker sublabel: resulting throw and displacement. */
+function strokerLabel(engineId: EngineId): string {
+  const e = BASE_ENGINES[engineId];
+  const sw = STROKER_MM[e.strokeMm] ?? e.strokeMm + 3.2;
+  const disp = Math.round(displacementCc(e.boreMm, sw, e.cylinders));
+  return `${sw.toFixed(1)}mm throw · ≈${disp}cc`;
+}
+
+function deckMm(s: EngineSelection): string {
+  return deckHeightMm(s).toFixed(1);
+}
+
+function pinMm(s: EngineSelection): string {
+  return tdcPinHeightMm(s).toFixed(1);
+}
 
 export function Sidebar() {
   const s = useEngineStore();
@@ -207,9 +224,10 @@ export function Sidebar() {
         <div className="mt-2 text-xs font-semibold text-zinc-300">Cylinder Sleeves</div>
         {(
           [
-            ['stock', 'Stock sleeves'],
-            ['shimmed', 'Block shims'],
-            ['darton', 'Darton sleeves'],
+            ['stock', 'Stock sleeves · cracks past 350 WHP (83mm)'],
+            ['shimmed', 'Block shims · holds to 450 WHP'],
+            ['billet-guard', 'DeeWorks billet block guard · 4/5/6-pot · holds to 600 WHP'],
+            ['darton', 'Darton sleeves · unlimited'],
           ] as const
         ).map(([id, label]) => (
           <OptionButton key={id} active={s.sleevesId === id} label={label} onClick={() => pick({ sleevesId: id }, 'block')} />
@@ -229,6 +247,31 @@ export function Sidebar() {
         ).map(([id, label]) => (
           <OptionButton key={id} active={s.rodsId === id} label={label} onClick={() => pick({ rodsId: id }, 'internals')} />
         ))}
+        <div className="mb-1 mt-2 text-xs font-semibold text-zinc-300">Crankshaft</div>
+        <OptionButton
+          active={s.crankId === 'stock-crank'}
+          label={`Stock crank · ${BASE_ENGINES[s.engineId].strokeMm.toFixed(1)}mm throw`}
+          onClick={() => pick({ crankId: 'stock-crank' }, 'internals')}
+        />
+        <OptionButton
+          active={s.crankId === 'stroker'}
+          label={`Stroker crank · ${strokerLabel(s.engineId)}`}
+          sub="Real displacement change via stroke"
+          onClick={() => pick({ crankId: 'stroker' }, 'internals')}
+        />
+        <div className="mb-1 mt-2 text-xs font-semibold text-zinc-300">Pistons</div>
+        {(
+          [
+            ['std-bore', 'STD bore pistons'],
+            ['plus-05', '+0.5mm overbore pistons'],
+            ['plus-10', '+1.0mm overbore pistons'],
+          ] as const
+        ).map(([id, label]) => (
+          <OptionButton key={id} active={s.pistonsId === id} label={label} onClick={() => pick({ pistonsId: id }, 'internals')} />
+        ))}
+        <div className="mt-2 font-mono text-[11px] text-zinc-500">
+          Deck {deckMm(s)}mm · TDC pin {pinMm(s)}mm — rods set deck height, never displacement
+        </div>
       </Accordion>
 
       <Accordion title="Top End (Cylinder Head)">
@@ -386,7 +429,11 @@ export function Sidebar() {
               </div>
             </div>
             <button
-              onClick={() => applySelection(b.selection)}
+              onClick={() => {
+                // Re-validate on load: migrates old saves missing newer fields.
+                const parsed = parseBuildJson(JSON.stringify({ selection: b.selection }));
+                if (parsed.ok) applySelection(parsed.selection);
+              }}
               className="rounded bg-zinc-700 px-2 py-0.5 text-[11px] hover:bg-zinc-600"
             >
               Load
