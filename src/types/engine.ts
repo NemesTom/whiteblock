@@ -85,6 +85,8 @@ export interface EngineSelection {
   animRpm: number;
   /** Toggleable 4-stroke cycle highlight on piston crowns. */
   cycleHighlight: boolean;
+  /** Slow-motion inspect mode: crank renders at an honest visible fraction. */
+  slowMo: boolean;
 }
 
 export interface DerivedMetrics {

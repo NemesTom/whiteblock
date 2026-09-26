@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { EngineSelection, EngineStatus } from '@/types/engine';
+import { animClock } from '@/lib/animClock';
 import {
   BASE_ENGINES,
   ROD_LENGTH_MM,
@@ -44,6 +45,7 @@ const DEFAULTS: EngineSelection = {
   sweepEnabled: false,
   animRpm: 800,
   cycleHighlight: false,
+  slowMo: false,
 };
 
 export function evaluateFailure(sel: EngineSelection): { status: EngineStatus; message: string } {
@@ -115,7 +117,13 @@ export const useEngineStore = create<EngineStore>()((set) => ({
       return { ...next, status, statusMessage: message };
     }),
   setEngineStatus: (s) => set({ status: s }),
-  reset: () => set({ ...DEFAULTS, status: 'OK', statusMessage: 'Setup healthy. Send it.' }),
+  reset: () => {
+    // The live clock is the single source of truth for rpm: without this,
+    // the next animation frame mirrors the stale overrev value straight
+    // back into the store and re-fails the engine instantly.
+    animClock.jumpTo(800);
+    set({ ...DEFAULTS, status: 'OK', statusMessage: 'Setup healthy. Send it.' });
+  },
 }));
 
 /** Selectors for derived telemetry. */

@@ -140,6 +140,7 @@ export function DynoChart() {
         sweepEnabled: false,
         animRpm: 800,
         cycleHighlight: false,
+        slowMo: false,
       }),
     [cfg],
   );
@@ -168,6 +169,7 @@ export function DynoChart() {
       sweepEnabled: false,
       animRpm: 800,
       cycleHighlight: false,
+      slowMo: false,
     });
   }, [engineId]);
 

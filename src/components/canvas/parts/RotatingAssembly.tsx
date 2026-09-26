@@ -107,8 +107,9 @@ export function RotatingAssembly() {
         rpm += (dt * (cap - 800)) / 22; // full sweep ≈ 22 s, to the limiter
         if (rpm > cap) rpm = 800;
       }
-      // Slow-motion crank: honest fraction of real speed so motion is visible
-      const visualRev = (rpm / 60) * SLOWMO;
+      // True crank revs by default (slider 6000 = 100 rev/s); the inspect
+      // toggle renders an honest visible fraction instead.
+      const visualRev = (rpm / 60) * (st.slowMo ? SLOWMO : 1);
       angle += dt * visualRev * Math.PI * 2;
       angleRef.current = angle;
       animClock.advance(angle, rpm);
