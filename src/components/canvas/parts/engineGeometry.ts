@@ -1,5 +1,5 @@
-import { BASE_ENGINES, ROD_LENGTH_MM } from '@/lib/physics';
-import type { EngineId, RodsId } from '@/types/engine';
+import { BASE_ENGINES, ROD_LENGTH_MM, effectiveGeometry } from '@/lib/physics';
+import type { EngineId, EngineSelection, RodsId } from '@/types/engine';
 
 /**
  * Shared visual scale + layout constants so the castings (block, head)
@@ -21,14 +21,14 @@ export function cylinderCount(id: EngineId): number {
   return BASE_ENGINES[id].cylinders;
 }
 
-/** Cylinder bore radius in scene units. */
-export function boreR(id: EngineId): number {
-  return (BASE_ENGINES[id].boreMm * MM) / 2;
+/** Cylinder bore radius in scene units (pass effective bore for overbore). */
+export function boreR(id: EngineId, boreMmOverride?: number): number {
+  return ((boreMmOverride ?? BASE_ENGINES[id].boreMm) * MM) / 2;
 }
 
-/** Crank throw (half stroke) in scene units. */
-export function crankThrow(id: EngineId): number {
-  return (BASE_ENGINES[id].strokeMm * MM) / 2;
+/** Crank throw (half stroke) in scene units (pass effective stroke for stroker). */
+export function crankThrow(id: EngineId, strokeMmOverride?: number): number {
+  return ((strokeMmOverride ?? BASE_ENGINES[id].strokeMm) * MM) / 2;
 }
 
 /** Centre-to-centre rod length in scene units. */
@@ -47,8 +47,8 @@ export function cylX(i: number, n: number): number {
 }
 
 /** Deck-face height: crank centre + throw + rod + crown + clearance. */
-export function deckY(id: EngineId, rods: RodsId): number {
-  return Y_CRANK + crankThrow(id) + rodUnits(rods) + CROWN_H + 0.03;
+export function deckY(id: EngineId, rods: RodsId, strokeMmOverride?: number): number {
+  return Y_CRANK + crankThrow(id, strokeMmOverride) + rodUnits(rods) + CROWN_H + 0.03;
 }
 
 /**
@@ -133,4 +133,23 @@ export function valveLift(theta: number, phase: number, isExhaust: boolean): num
   if (!isExhaust && c >= 0 && c < 1) return Math.sin(Math.PI * c);
   if (isExhaust && c >= 3 && c < 4) return Math.sin(Math.PI * (c - 3));
   return 0;
+}
+
+type BottomEnd = Pick<EngineSelection, 'engineId' | 'rodsId' | 'crankId' | 'pistonsId'>;
+
+/**
+ * Deck-face height in mm — the honest consequence of rod choice: longer
+ * rods push the pin (and deck) up for the same crank throw.
+ */
+export function deckHeightMm(sel: BottomEnd): number {
+  const geo = effectiveGeometry(sel);
+  const units = Y_CRANK + (geo.strokeMm * MM) / 2 + ROD_LENGTH_MM[sel.rodsId] * MM + CROWN_H + 0.03;
+  return Math.round((units / MM) * 10) / 10;
+}
+
+/** Wrist-pin height at TDC in mm (crank centre datum). */
+export function tdcPinHeightMm(sel: BottomEnd): number {
+  const geo = effectiveGeometry(sel);
+  const units = Y_CRANK + (geo.strokeMm * MM) / 2 + ROD_LENGTH_MM[sel.rodsId] * MM;
+  return Math.round((units / MM) * 10) / 10;
 }

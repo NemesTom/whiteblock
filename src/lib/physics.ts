@@ -8,7 +8,9 @@ import type {
   HeadId,
   InjectorId,
   IntercoolerId,
+  PistonsId,
   RodsId,
+  SleevesId,
   TransmissionId,
   TurboId,
   TuneId,
@@ -148,6 +150,69 @@ export const ROD_LIMIT_WHP: Record<RodsId, number> = {
   'stock-n': 300,
   'stock-rn': 350,
   'forged-h': 800,
+};
+
+/** Overbore added by piston choice (mm of bore diameter). */
+export const OVERBORE_MM: Record<PistonsId, number> = {
+  'std-bore': 0,
+  'plus-05': 0.5,
+  'plus-10': 1.0,
+};
+
+/**
+ * Stroker throws (mm): the documented whiteblock stroker path, +3.2 mm.
+ * 90 mm cranks stroke to 93.2, 93.2 mm cranks to the 95.5 mm custom throw.
+ */
+export const STROKER_MM: Record<number, number> = {
+  90: 93.2,
+  93.2: 95.5,
+};
+
+export interface EffectiveGeometry {
+  boreMm: number;
+  strokeMm: number;
+  cylinders: number;
+}
+
+/**
+ * Honest geometry: displacement moves ONLY through bore (overbore pistons)
+ * and stroke (stroker crank). Rod length never enters swept volume — it
+ * sets deck height, pin position and rod/stroke ratio instead.
+ */
+export function effectiveGeometry(sel: Pick<EngineSelection, 'engineId' | 'crankId' | 'pistonsId'>): EffectiveGeometry {
+  const engine = BASE_ENGINES[sel.engineId];
+  const strokeMm = sel.crankId === 'stroker' ? (STROKER_MM[engine.strokeMm] ?? engine.strokeMm + 3.2) : engine.strokeMm;
+  return {
+    boreMm: engine.boreMm + OVERBORE_MM[sel.pistonsId],
+    strokeMm,
+    cylinders: engine.cylinders,
+  };
+}
+
+/**
+ * Effective compression ratio from the stock clearance volume:
+ * stroker/overbore builds genuinely raise it.
+ */
+export function effectiveCompressionRatio(sel: Pick<EngineSelection, 'engineId' | 'crankId' | 'pistonsId'>): number {
+  const engine = BASE_ENGINES[sel.engineId];
+  const baseSwept = displacementCc(engine.boreMm, engine.strokeMm, engine.cylinders);
+  const clearance = baseSwept / (engine.compressionRatio - 1);
+  const geo = effectiveGeometry(sel);
+  const newSwept = displacementCc(geo.boreMm, geo.strokeMm, geo.cylinders);
+  return Math.round(((newSwept + clearance) / clearance) * 10) / 10;
+}
+
+/** RPM at which mean piston speed hits 25 m/s (race-territory ceiling). */
+export function mpsLimitRpm(strokeMm: number): number {
+  return Math.floor((25 * 60) / (2 * (strokeMm / 1000)) / 100) * 100;
+}
+
+/** Cracked-sleeve WHP ceiling per block prep (83 mm+ bores). */
+export const SLEEVE_CRACK_WHP: Record<SleevesId, number> = {
+  stock: 350,
+  shimmed: 450,
+  'billet-guard': 600,
+  darton: Infinity,
 };
 
 /** Compressor behaviour per turbo: spool, capability and top-end choke. */
@@ -466,7 +531,8 @@ export function calibrationK(engine: BaseEngineSpec): number {
 export function torqueCrankNm(sel: EngineSelection, rpm: number): number {
   const engine = BASE_ENGINES[sel.engineId];
   const k = calibrationK(engine);
-  const dispL = displacementCc(engine.boreMm, engine.strokeMm, engine.cylinders) / 1000;
+  const geo = effectiveGeometry(sel);
+  const dispL = displacementCc(geo.boreMm, geo.strokeMm, geo.cylinders) / 1000;
   const ve = veAtRpm(rpm, sel.headId, engine.baseTqRpm) / 100;
   const spec = adjustedSpec(sel);
   const boost = boostAtRpm(rpm, effectiveBoostTarget(sel), spec, engine.redlineRpm);
@@ -516,10 +582,14 @@ export interface RpmLimit {
 }
 
 /** Weakest link of the rotating assembly / valvetrain / oiling. */
-export function rpmLimit(sel: Pick<EngineSelection, 'rodsId' | 'headId' | 'valveSpringsId'>): RpmLimit {
+export function rpmLimit(
+  sel: Pick<EngineSelection, 'engineId' | 'rodsId' | 'crankId' | 'pistonsId' | 'headId' | 'valveSpringsId'>,
+): RpmLimit {
   const springBonus = sel.valveSpringsId === 'supertech' ? 400 : 0;
+  // Longer throws raise mean piston speed: cap the rods at 25 m/s.
+  const strokeMm = effectiveGeometry(sel).strokeMm;
   const candidates: RpmLimit[] = [
-    { limit: ROD_RPM_LIMIT[sel.rodsId], culprit: 'rods' },
+    { limit: Math.min(ROD_RPM_LIMIT[sel.rodsId], mpsLimitRpm(strokeMm)), culprit: 'rods' },
     { limit: HEAD_RPM_LIMIT[sel.headId] + springBonus, culprit: 'head' },
     { limit: sel.rodsId === 'forged-h' ? OIL_PUMP_RPM_LIMIT_FORGED : OIL_PUMP_RPM_LIMIT, culprit: 'pump' },
   ];
