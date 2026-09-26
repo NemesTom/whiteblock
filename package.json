@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev -p 8099",
     "build": "next build",
-    "start": "next start -p 8099",
+    "start": "PORT=8099 node .next/standalone/server.js",
     "lint": "eslint",
     "build:package": "next build && mkdir -p builds && tar -czf builds/whiteblock-build-$(date +%Y%m%d%H%M%S).tar.gz .next public package.json"
   },
