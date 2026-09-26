@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
 
+// PAGES_BUILD=1 → fully static `out/` directory for GitHub Pages (custom
+// domain, so no basePath is needed). Default stays `standalone` for the
+// Docker/VPS flow, where middleware CSP nonces keep working.
 const nextConfig: NextConfig = {
-  // Self-contained server output for the zipped release artifact:
-  // `.next/standalone/server.js` runs with `node server.js`, no install.
-  output: "standalone",
+  output: process.env.PAGES_BUILD ? "export" : "standalone",
 };
 
 export default nextConfig;

@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev -p 8099",
     "build": "next build",
-    "postbuild": "cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/",
+    "postbuild": "if [ -d .next/standalone ]; then cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/; fi",
     "start": "PORT=8099 HOSTNAME=0.0.0.0 node .next/standalone/server.js",
     "lint": "eslint",
     "build:package": "next build && mkdir -p builds && tar -czf builds/whiteblock-build-$(date +%Y%m%d%H%M%S).tar.gz .next public package.json"
