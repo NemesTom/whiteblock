@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Line } from 'react-chartjs-2';
 import {
   CategoryScale,
@@ -95,6 +95,9 @@ export function DynoChart() {
   const boostPsi = useEngineStore((s) => s.boostPsi);
   const set = useEngineStore((s) => s.set);
   const liveRpm = useAnimRpm();
+  /** Per-line visibility toggles (legend clicks work too). */
+  const [hidden, setHidden] = useState<Record<string, boolean>>({ crank: true });
+  const toggleLine = (key: string) => setHidden((h) => ({ ...h, [key]: !h[key] }));
 
   const cfg = useMemo(
     () => ({ engineId, rodsId, headId, turboId, manifoldId, transmissionId, sleevesId, tuneId, clutchId, transCoolerId, boostPsi }),
@@ -169,6 +172,18 @@ export function DynoChart() {
         tension: 0.35,
         pointRadius: 0,
         yAxisID: 'y',
+        hidden: !!hidden.whp,
+      },
+      {
+        label: 'Horsepower (crank)',
+        data: m.curve.map((p) => p.hpCrank),
+        borderColor: '#fbbf24',
+        backgroundColor: 'rgba(251,191,36,0.15)',
+        borderDash: [2, 2],
+        tension: 0.35,
+        pointRadius: 0,
+        yAxisID: 'y',
+        hidden: !!hidden.crank,
       },
       {
         label: 'Torque (Nm)',
@@ -178,6 +193,7 @@ export function DynoChart() {
         tension: 0.35,
         pointRadius: 0,
         yAxisID: 'y1',
+        hidden: !!hidden.tq,
       },
       {
         label: 'Stock baseline (WHP)',
@@ -187,6 +203,7 @@ export function DynoChart() {
         tension: 0.35,
         pointRadius: 0,
         yAxisID: 'y',
+        hidden: !!hidden.base,
       },
     ],
   };
@@ -201,14 +218,22 @@ export function DynoChart() {
 
   return (
     <div className="flex h-full flex-col bg-zinc-950 text-zinc-100">
-      <div className="grid grid-cols-2 gap-2 px-4 pt-2 text-xs sm:grid-cols-7">
+      <div className="grid grid-cols-2 gap-2 px-4 pt-2 text-xs sm:grid-cols-8">
         <Metric label="Displacement" value={`${m.displacementCc} cc`} />
         <Metric label="Compression" value={`${engine.compressionRatio}:1`} />
         <Metric label="Rod/Stroke" value={String(m.rodStrokeRatio)} />
         <Metric label="VE" value={`${m.volumetricEfficiency}%`} />
         <Metric label="Boost" value={`${effBoost.toFixed(1)} psi`} />
         <Metric label="Engine speed" value={`${Math.round(liveRpm)} rpm`} />
-        <Metric label="Peak" value={`${m.maxHp} WHP @ ${m.peakHpRpm}`} highlight />
+        <Metric label="Peak wheel" value={`${m.maxHp} WHP @ ${m.peakHpRpm}`} highlight />
+        <Metric label="Peak crank" value={`${m.maxCrankHp} hp @ ${m.peakCrankHpRpm}`} />
+      </div>
+      <div className="flex items-center gap-1.5 px-4 pb-1 pt-1">
+        <span className="text-[10px] uppercase tracking-wide text-zinc-500">Lines:</span>
+        <LineChip active={!hidden.whp} color="#38bdf8" label="WHP" onClick={() => toggleLine('whp')} />
+        <LineChip active={!hidden.crank} color="#fbbf24" label="Crank" onClick={() => toggleLine('crank')} />
+        <LineChip active={!hidden.tq} color="#f472b6" label="Torque" onClick={() => toggleLine('tq')} />
+        <LineChip active={!hidden.base} color="#71717a" label="Baseline" onClick={() => toggleLine('base')} />
       </div>
       <div className="min-h-0 flex-1 px-2 pb-2" title="Click to move the RPM cursor">
         <Line
@@ -236,5 +261,20 @@ function Metric({ label, value, highlight }: { label: string; value: string; hig
       <div className="text-[10px] uppercase tracking-wide text-zinc-400">{label}</div>
       <div className={`font-mono text-sm font-bold ${highlight ? 'text-sky-300' : ''}`}>{value}</div>
     </div>
+  );
+}
+
+function LineChip({ active, color, label, onClick }: { active: boolean; color: string; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-opacity ${
+        active ? 'border-zinc-600 bg-zinc-800 text-zinc-100' : 'border-zinc-800 bg-transparent text-zinc-500 opacity-60'
+      }`}
+    >
+      <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+      {label}
+    </button>
   );
 }

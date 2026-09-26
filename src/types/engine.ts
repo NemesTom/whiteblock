@@ -7,7 +7,15 @@ export type EngineId = 'B5234T3' | 'B5254T4' | 'B4194T' | 'B6284T';
 
 export type RodsId = 'stock-n' | 'stock-rn' | 'forged-h';
 export type HeadId = 'stock-n' | 'rn-swap';
-export type TurboId = 'td04-15g' | 'td04-16t' | 'td04-19t' | 'k24';
+export type TurboId =
+  | 'td04-13g'
+  | 'td04-13t'
+  | 'td04l-14t'
+  | 'td04-15g'
+  | 'td04-16t'
+  | 'td04-18t'
+  | 'td04-19t'
+  | 'k24';
 export type ManifoldId = 'stock' | 'japanifold-s60r';
 export type TransmissionId = 'm56' | 'aw55' | 'gm-4t65e';
 export type SleevesId = 'stock' | 'shimmed' | 'darton';
@@ -90,6 +98,8 @@ export interface DerivedMetrics {
 export interface DynoPoint {
   rpm: number;
   hp: number;
+  /** Crank horsepower before drivetrain loss (display only). */
+  hpCrank: number;
   tqNm: number;
   boostPsi: number;
 }
