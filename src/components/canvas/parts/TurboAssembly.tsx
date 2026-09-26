@@ -10,6 +10,27 @@ import { clip } from './materials';
 import { OptionalModel, MODEL_PATHS } from './OptionalModel';
 import { cylX, deckY, engineLength } from './engineGeometry';
 
+type V3 = [number, number, number];
+
+/**
+ * Exact pipe run between two points (no near-miss junctions): a cylinder
+ * fitted endpoint-to-endpoint via quaternion. Computed per render — renders
+ * only happen on config change, never per frame.
+ */
+function PipeRun({ from, to, r, material, segments = 14 }: { from: V3; to: V3; r: number; material: THREE.Material; segments?: number }) {
+  const a = new THREE.Vector3(...from);
+  const b = new THREE.Vector3(...to);
+  const dir = b.clone().sub(a);
+  const len = dir.length();
+  const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+  const pos = a.add(b).multiplyScalar(0.5);
+  return (
+    <mesh position={pos} quaternion={quat} material={material}>
+      <cylinderGeometry args={[r, r, len, segments]} />
+    </mesh>
+  );
+}
+
 /**
  * Exhaust side: individual runner tubes merging into a collector, then a
  * TD04-style turbo (turbine + compressor volutes, CHRA, spinning
@@ -102,8 +123,10 @@ export function TurboAssembly({ plane }: { plane: THREE.Plane }) {
   }, [n, headBase, collectorY, collectorZ]);
 
   const downpipe = useMemo(() => {
+    // Starts exactly on the outlet flange face (-0.445) — one continuous
+    // gas path from the turbine, no floating tube.
     const curve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(-0.4, 0, 0),
+      new THREE.Vector3(-0.445, 0, 0),
       new THREE.Vector3(-0.56, -0.12, -0.05),
       new THREE.Vector3(-0.62, -0.5, -0.2),
       new THREE.Vector3(-0.72, -0.9, -0.3),
@@ -197,16 +220,14 @@ export function TurboAssembly({ plane }: { plane: THREE.Plane }) {
         <group position={[turboX, collectorY + 0.1, collectorZ]} scale={big}>
           {/* ===== Turbine housing (lathe volute, outlet faces -X) ===== */}
           <mesh position={[-0.08, 0, 0]} rotation={[0, 0, Math.PI / 2]} geometry={housings.turb} material={mats.turbine} />
-          {/* Turbine inlet elbow from the manifold flange */}
-          <mesh position={[-0.3, 0.14, 0]} rotation={[0, 0, 1.1]} material={mats.turbine}>
-            <cylinderGeometry args={[0.1, 0.11, 0.26, 14]} />
-          </mesh>
-          {/* V-band clamp + outlet flange */}
-          <mesh position={[-0.38, 0, 0]} rotation={[0, Math.PI / 2, 0]} material={mats.steel}>
+          {/* Inlet bridge: manifold flange plate top → turbine volute (exact fit) */}
+          <PipeRun from={[-0.35, -0.02, 0]} to={[-0.16, 0.1, 0]} r={0.1} material={mats.turbine} />
+          {/* V-band clamp + outlet flange (stacked faces, shared axis) */}
+          <mesh position={[-0.395, 0, 0]} rotation={[0, Math.PI / 2, 0]} material={mats.steel}>
             <torusGeometry args={[0.15, 0.025, 10, 20]} />
           </mesh>
-          <mesh position={[-0.4, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.turbine}>
-            <cylinderGeometry args={[0.15, 0.15, 0.04, 18]} />
+          <mesh position={[-0.42, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.turbine}>
+            <cylinderGeometry args={[0.15, 0.15, 0.05, 18]} />
           </mesh>
           {/* Heat shield over the turbine */}
           <mesh position={[-0.22, 0.1, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.shield}>
@@ -301,15 +322,17 @@ export function TurboAssembly({ plane }: { plane: THREE.Plane }) {
           </mesh>
 
           {/* ===== Downpipe with angled flange + studs ===== */}
-          <mesh position={[-0.42, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.dark}>
+          <mesh position={[-0.465, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.dark}>
             <cylinderGeometry args={[0.13, 0.13, 0.04, 16]} />
           </mesh>
           {[-0.09, 0.09].map((z) => (
-            <mesh key={z} position={[-0.44, 0.1, z]} material={mats.steel}>
+            <mesh key={z} position={[-0.485, 0.1, z]} material={mats.steel}>
               <cylinderGeometry args={[0.015, 0.015, 0.1, 8]} />
             </mesh>
           ))}
           <mesh geometry={downpipe} material={mats.dark} />
+          {/* Tail tip extension along the exit tangent */}
+          <PipeRun from={[-0.72, -0.9, -0.3]} to={[-0.78, -1.12, -0.34]} r={0.11} material={mats.dark} />
         </group>
       </OptionalModel>
     </>
