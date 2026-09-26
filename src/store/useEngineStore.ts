@@ -1,0 +1,114 @@
+import { create } from 'zustand';
+import type { EngineSelection, EngineStatus } from '@/types/engine';
+import {
+  BASE_ENGINES,
+  FUEL_MOD,
+  ROD_LENGTH_MM,
+  ROD_LIMIT_WHP,
+  TURBO_FLOW_WHP,
+  displacementCc,
+  dynoCurve,
+  maxHorsepower,
+  rodStrokeRatio,
+  volumetricEfficiency,
+} from '@/lib/physics';
+
+interface EngineStore extends EngineSelection {
+  set: (patch: Partial<EngineSelection>) => void;
+  reset: () => void;
+  setEngineStatus: (s: EngineStatus) => void;
+  /** Computed failure status from the "Volvospeed" rules. */
+  status: EngineStatus;
+  statusMessage: string;
+}
+
+const DEFAULTS: EngineSelection = {
+  engineId: 'B5234T3',
+  rodsId: 'stock-n',
+  headId: 'stock-n',
+  turboId: 'td04-15g',
+  manifoldId: 'stock',
+  transmissionId: 'm56',
+  sleevesId: 'stock',
+  tuneId: 'stock',
+  clutchId: 'stock',
+  transCoolerId: 'none',
+  boostPsi: 14,
+  cutaway: false,
+  focusedPart: null,
+};
+
+export function evaluateFailure(sel: EngineSelection): { status: EngineStatus; message: string } {
+  const engine = BASE_ENGINES[sel.engineId];
+  const hp = maxHorsepower(sel);
+
+  // Rule A — the torque spike: 19T + >18psi + stock rods => bent rods
+  if (sel.turboId === 'td04-19t' && sel.boostPsi > 18 && (sel.rodsId === 'stock-n' || sel.rodsId === 'stock-rn')) {
+    return { status: 'FAILED_BENT_RODS', message: 'Violent 19T torque spike bent the stock rods. Dyno output dropped to zero.' };
+  }
+  // Stock N-rods limit: 15G-class turbo pushing past 300 WHP at low rpm
+  if (hp > ROD_LIMIT_WHP[sel.rodsId]) {
+    if (sel.rodsId !== 'forged-h') {
+      return { status: 'FAILED_BENT_RODS', message: `Power (${hp} WHP) exceeded ${sel.rodsId} rod limit (${ROD_LIMIT_WHP[sel.rodsId]} WHP). Rods failed.` };
+    }
+  }
+  // Rule B — cracked sleeve: 83mm bore + >350 WHP + stock sleeves
+  if (engine.boreMm >= 83 && hp > 350 && sel.sleevesId === 'stock') {
+    return { status: 'FAILED_CRACKED_BLOCK', message: 'Thin 83mm cylinder walls cracked above 350 WHP on stock sleeves. Add shims or Darton sleeves.' };
+  }
+  // Rule C — T6 glass cannon
+  if (sel.engineId === 'B6284T' && sel.transmissionId === 'gm-4t65e' && sel.tuneId === 'stage2') {
+    return { status: 'FAILED_EXPLODED_GEARBOX', message: 'Stage 2 T6 torque exploded the stock transverse GM 4T65-E gearbox.' };
+  }
+  // AW55 auto limit without cooler
+  if (sel.transmissionId === 'aw55' && hp > 320 && sel.transCoolerId !== 'external') {
+    return { status: 'FAILED_OVERWHELMED_TRANS', message: 'AW55-50SN overheated past 320 WHP without an external trans cooler.' };
+  }
+  // M56 manual with stock clutch past ~400 WHP
+  if (sel.transmissionId === 'm56' && hp > 400 && sel.clutchId !== 'spec-stage3') {
+    return { status: 'FAILED_OVERWHELMED_TRANS', message: 'M56 survived, but the stock clutch slips past 400 WHP. Fit a Spec Stage 3 clutch.' };
+  }
+  // K24 without Japanifold is choked (warning, not failure)
+  if (sel.turboId === 'k24' && sel.manifoldId !== 'japanifold-s60r') {
+    return { status: 'OK', message: 'K24 choked on stock manifold — fit the S60R/Japanifold to unlock full flow.' };
+  }
+  void TURBO_FLOW_WHP;
+  void FUEL_MOD;
+  return { status: 'OK', message: 'Setup healthy. Send it.' };
+}
+
+export const useEngineStore = create<EngineStore>()((set) => ({
+  ...DEFAULTS,
+  status: 'OK' as EngineStatus,
+  statusMessage: 'Setup healthy. Send it.',
+  set: (patch) =>
+    set((state) => {
+      const next = { ...state, ...patch };
+      const { status, message } = evaluateFailure(next);
+      return { ...next, status, statusMessage: message };
+    }),
+  setEngineStatus: (s) => set({ status: s }),
+  reset: () => set({ ...DEFAULTS, status: 'OK', statusMessage: 'Setup healthy. Send it.' }),
+}));
+
+/** Selectors for derived telemetry. */
+export function selectMetrics(sel: EngineSelection) {
+  const engine = BASE_ENGINES[sel.engineId];
+  const disp = Math.round(displacementCc(engine.boreMm, engine.strokeMm, engine.cylinders));
+  const rsr = rodStrokeRatio(ROD_LENGTH_MM[sel.rodsId], engine.strokeMm);
+  const ve = volumetricEfficiency(sel.headId);
+  const maxHp = maxHorsepower(sel);
+  const curve = dynoCurve(sel);
+  const failed = evaluateFailure(sel).status !== 'OK';
+  const peak = curve.reduce((a, b) => (b.hp > a.hp ? b : a), curve[0]);
+  return {
+    displacementCc: disp,
+    compressionRatio: engine.compressionRatio,
+    rodStrokeRatio: Math.round(rsr * 100) / 100,
+    volumetricEfficiency: ve,
+    maxHp: failed ? 0 : maxHp,
+    maxTqNm: failed ? 0 : Math.max(...curve.map((p) => p.tqNm)),
+    peakHpRpm: peak.rpm,
+    curve: failed ? curve.map((p) => ({ ...p, hp: 0, tqNm: 0 })) : curve,
+  };
+}
