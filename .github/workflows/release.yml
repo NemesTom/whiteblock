@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Check out
         # Pinned by SHA (checkout v5); bump with Dependabot.
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           # Full history so release notes see real tags, not a depth-1 stub.
           fetch-depth: 0
