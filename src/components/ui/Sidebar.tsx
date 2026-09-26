@@ -83,9 +83,13 @@ export function Sidebar() {
       <Accordion title="Turbocharger & Exhaust" defaultOpen>
         {(
           [
+            ['td04-13g', 'TD04HL-13G · early 850 T5 / 2.5T · max 230 WHP'],
+            ['td04-13t', 'TD04HL-13T · LPT S60/S80/V70 · max 250 WHP'],
+            ['td04l-14t', 'TD04L-14T · 2.4T/2.5T LPT · max 255 WHP'],
             ['td04-15g', 'TD04HL-15G · stock · fast spool · max 260 WHP'],
             ['td04-16t', 'TD04HL-16T · linear · max 300 WHP'],
-            ['td04-19t', 'TD04HL-19T · violent spike · bends stock rods'],
+            ['td04-18t', 'TD04HL-18T · V70R 98–99 · violent spike · bends stock rods'],
+            ['td04-19t', 'TD04HL-19T · 2000 R / T5 upgrade · violent spike · bends stock rods'],
             ['k24', 'KKK K24 (S60R) · max 350 WHP · needs Japanifold'],
           ] as const
         ).map(([id, label]) => (
