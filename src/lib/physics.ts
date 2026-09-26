@@ -5,6 +5,7 @@ import type {
   EngineSelection,
   HeadId,
   RodsId,
+  TransmissionId,
   TurboId,
   TuneId,
 } from '@/types/engine';
@@ -41,6 +42,51 @@ export const BASE_ENGINES: Record<EngineId, BaseEngineSpec> = {
     redlineRpm: 6500,
     notes: 'Thinner walls — cracks >350 WHP without shims/sleeves.',
   },
+  B5244T3: {
+    id: 'B5244T3',
+    label: 'B5244T3 · 2.4T LPT',
+    displacementNote: '2.4L LPT',
+    cylinders: 5,
+    boreMm: 83.0,
+    strokeMm: 90.0,
+    compressionRatio: 9.0,
+    baseHpPs: 200,
+    baseHpRpm: 6000,
+    baseTqNm: 285,
+    baseTqRpm: 1800,
+    redlineRpm: 6000,
+    notes: 'Relaxed LPT — 13T spools early, runs out of breath up top.',
+  },
+  B5244T5: {
+    id: 'B5244T5',
+    label: 'B5244T5 · 2.4 T5',
+    displacementNote: '2.4L T5',
+    cylinders: 5,
+    boreMm: 81.0,
+    strokeMm: 93.2,
+    compressionRatio: 8.5,
+    baseHpPs: 260,
+    baseHpRpm: 5500,
+    baseTqNm: 350,
+    baseTqRpm: 2100,
+    redlineRpm: 6500,
+    notes: 'Long-stroke P2 T5 with K24 and dual VVT.',
+  },
+  B5254T2: {
+    id: 'B5254T2',
+    label: 'B5254T2 · 2.5T LPT',
+    displacementNote: '2.5L LPT',
+    cylinders: 5,
+    boreMm: 83.0,
+    strokeMm: 93.2,
+    compressionRatio: 9.0,
+    baseHpPs: 210,
+    baseHpRpm: 5000,
+    baseTqNm: 320,
+    baseTqRpm: 1800,
+    redlineRpm: 6000,
+    notes: 'Torquey XC90/S60 LPT — 14T gives instant shove, then signs off.',
+  },
   B4194T: {
     id: 'B4194T',
     label: 'B4194T · 1.9L T4',
@@ -48,13 +94,13 @@ export const BASE_ENGINES: Record<EngineId, BaseEngineSpec> = {
     cylinders: 4,
     boreMm: 81.0,
     strokeMm: 90.0,
-    compressionRatio: 9.0,
+    compressionRatio: 8.5,
     baseHpPs: 200,
     baseHpRpm: 5500,
     baseTqNm: 300,
     baseTqRpm: 2400,
     redlineRpm: 7000,
-    notes: 'High-revving 4-cyl, aggressive power delivery.',
+    notes: 'High-revving, aggressive power delivery.',
   },
   B6284T: {
     id: 'B6284T',
@@ -70,6 +116,21 @@ export const BASE_ENGINES: Record<EngineId, BaseEngineSpec> = {
     baseTqRpm: 2000,
     redlineRpm: 6200,
     notes: 'Twin-turbo six — famous for killing the stock GM 4T65-E.',
+  },
+  B6294T: {
+    id: 'B6294T',
+    label: 'B6294T · 2.9L T6 Twin-Turbo',
+    displacementNote: '2.9L T6',
+    cylinders: 6,
+    boreMm: 83.0,
+    strokeMm: 90.0,
+    compressionRatio: 8.5,
+    baseHpPs: 272,
+    baseHpRpm: 5200,
+    baseTqNm: 380,
+    baseTqRpm: 1800,
+    redlineRpm: 6000,
+    notes: 'Updated T6 with dual VVT — thin 83mm walls, same glass gearbox.',
   },
 };
 
@@ -98,7 +159,7 @@ export interface TurboAirSpec {
 
 export const TURBO_AIR: Record<TurboId, TurboAirSpec> = {
   'td04-13g': { spoolStartRpm: 1200, fullBoostRpm: 2000, maxBoostPsi: 15, topEndDropPsi: 8.0, chokeWhp: 230 },
-  'td04-13t': { spoolStartRpm: 1250, fullBoostRpm: 2100, maxBoostPsi: 16, topEndDropPsi: 7.0, chokeWhp: 250 },
+  'td04-13t': { spoolStartRpm: 1250, fullBoostRpm: 2100, maxBoostPsi: 16, topEndDropPsi: 4.5, chokeWhp: 250 },
   'td04l-14t': { spoolStartRpm: 1300, fullBoostRpm: 2150, maxBoostPsi: 16, topEndDropPsi: 7.0, chokeWhp: 255 },
   'td04-15g': { spoolStartRpm: 1300, fullBoostRpm: 2200, maxBoostPsi: 17, topEndDropPsi: 8.0, chokeWhp: 260 },
   'td04-16t': { spoolStartRpm: 1400, fullBoostRpm: 2300, maxBoostPsi: 20, topEndDropPsi: 6.5, chokeWhp: 300 },
@@ -110,17 +171,25 @@ export const TURBO_AIR: Record<TurboId, TurboAirSpec> = {
 /** Factory-fit turbo per engine — the dyno anchor baseline. */
 export const ENGINE_STOCK_TURBO: Record<EngineId, TurboId> = {
   B5234T3: 'td04-15g',
+  B5244T3: 'td04-13t',
+  B5244T5: 'k24',
+  B5254T2: 'td04l-14t',
   B5254T4: 'k24',
-  B4194T: 'td04-15g',
+  B4194T: 'td04l-14t',
   B6284T: 'td04-16t',
+  B6294T: 'td04-16t',
 };
 
 /** Factory boost targets (psi) per engine on the stock tune. */
 export const ENGINE_STOCK_BOOST_PSI: Record<EngineId, number> = {
   B5234T3: 9.5,
+  B5244T3: 8,
+  B5244T5: 12,
+  B5254T2: 9,
   B5254T4: 13,
   B4194T: 11,
   B6284T: 9,
+  B6294T: 9,
 };
 
 /** Combustion efficiency gain from timing/fuelling per tune stage. */
@@ -130,8 +199,14 @@ export const TUNE_TIMING_GAIN: Record<TuneId, number> = {
   stage2: 1.12,
 };
 
-/** FWD drivetrain loss applied to crank figures to get wheel figures. */
-export const DRIVETRAIN_EFF = 0.88;
+/** FWD drivetrain efficiency per gearbox (manual ~12%, slushbox ~15-17%). */
+export const TRANS_EFF: Record<TransmissionId, number> = {
+  m56: 0.88,
+  aw55: 0.85,
+  'gm-4t65e': 0.83,
+};
+/** Backwards-compatible default (M56 — anchors validated on it). */
+export const DRIVETRAIN_EFF = TRANS_EFF.m56;
 export const ATM_PSI = 14.7;
 export const PS_TO_HP = 0.98632;
 
@@ -177,7 +252,12 @@ export function veShape(rpm: number, torquePeakRpm: number, isRN: boolean): numb
   const flat = isRN ? 1.8 : 1.5; // plateau width in krpm past peak
   const dx = Math.max(0, (rpm - torquePeakRpm) / 1000 - flat);
   const fall = isRN ? 0.034 : 0.04;
-  return Math.max(0.6, 1 - fall * dx - 0.004 * dx * dx);
+  const base = Math.max(0.6, 1 - fall * dx - 0.004 * dx * dx);
+  // High-rpm cliff past 6500: pumping losses explode and small turbos fall
+  // off the map, so power dives instead of climbing to 8000.
+  if (rpm <= 6500) return base;
+  const cliff = isRN ? 0.18 : 0.3;
+  return Math.max(0.35, base * (1 - cliff * ((rpm - 6500) / 1000)));
 }
 
 /**
@@ -343,14 +423,15 @@ export function shaftSpeed(sel: EngineSelection, rpm: number): number {
  */
 export function dynoCurve(sel: EngineSelection): DynoPoint[] {
   const engine = BASE_ENGINES[sel.engineId];
+  const eff = TRANS_EFF[sel.transmissionId];
   const choke = chokeWhp(sel);
   const pts: DynoPoint[] = [];
   for (let rpm = 800; rpm <= 8000; rpm += 200) {
     const tqCrank = torqueCrankNm(sel, rpm);
-    const tqWheel = tqCrank * DRIVETRAIN_EFF;
+    const tqWheel = tqCrank * eff;
     const boost = boostAtRpm(rpm, effectiveBoostTarget(sel), TURBO_AIR[sel.turboId], engine.redlineRpm);
     const hp = Math.min(choke, ((tqWheel / 1.35581795) * rpm) / 5252);
-    const hpCrank = Math.min(choke / DRIVETRAIN_EFF, ((tqCrank / 1.35581795) * rpm) / 5252);
+    const hpCrank = Math.min(choke / eff, ((tqCrank / 1.35581795) * rpm) / 5252);
     pts.push({
       rpm,
       hp: Math.round(Math.max(0, hp)),
