@@ -82,8 +82,15 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${GITHUB_REF_NAME}"
-          gh release create "${TAG}" \
-            --title "Whiteblock ${TAG}" \
-            --notes-file release-notes.md \
-            "whiteblock-app-${TAG}.zip" \
-            "whiteblock-docker-${TAG}.tar.gz"
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            # Re-tagged history: refresh assets on the existing release.
+            gh release upload "${TAG}" --clobber \
+              "whiteblock-app-${TAG}.zip" \
+              "whiteblock-docker-${TAG}.tar.gz"
+          else
+            gh release create "${TAG}" \
+              --title "Whiteblock ${TAG}" \
+              --notes-file release-notes.md \
+              "whiteblock-app-${TAG}.zip" \
+              "whiteblock-docker-${TAG}.tar.gz"
+          fi
