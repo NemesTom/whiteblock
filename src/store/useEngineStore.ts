@@ -3,12 +3,19 @@ import type { EngineSelection, EngineStatus } from '@/types/engine';
 import { animClock } from '@/lib/animClock';
 import {
   BASE_ENGINES,
+  BIG_FRAME_MIN,
+  FUEL_PUMP_CAP_HP,
   ROD_LENGTH_MM,
   ROD_LIMIT_WHP,
   TRANS_EFF,
   TURBO_MAX_SHAFT,
   displacementCc,
   dynoCurve,
+  effectiveBoostTarget,
+  fuelDemandHp,
+  injectorCapHp,
+  injectorDuty,
+  isBigFrame,
   maxHorsepower,
   rodStrokeRatio,
   rpmLimit,
@@ -36,6 +43,12 @@ const DEFAULTS: EngineSelection = {
   tuneId: 'stock',
   clutchId: 'stock',
   transCoolerId: 'none',
+  injectorId: 'stock-350',
+  fuelPumpId: 'stock-pump',
+  intercoolerId: 'stock-smic',
+  downpipeId: 'stock-25',
+  studsId: 'stock-bolts',
+  valveSpringsId: 'stock-springs',
   boostPsi: 14,
   cutaway: false,
   cutawayAxis: 'x',
@@ -52,6 +65,19 @@ const DEFAULTS: EngineSelection = {
 export function evaluateFailure(sel: EngineSelection): { status: EngineStatus; message: string } {
   const engine = BASE_ENGINES[sel.engineId];
   const hp = maxHorsepower(sel);
+
+  // Fitment gate: T3 big-frame turbos physically need a tubular T3 manifold.
+  if (isBigFrame(sel.turboId) && sel.manifoldId !== 'tubular-t3') {
+    return { status: 'SETUP_INCOMPATIBLE', message: `The ${sel.turboId} is a T3-flange turbo — it will not bolt to a TD04 manifold. Fit the tubular T3 manifold.` };
+  }
+  // Big frames also demand breathing: FMIC + 3" exhaust minimum.
+  if (isBigFrame(sel.turboId) && (sel.intercoolerId !== 'race-fmic' && sel.intercoolerId !== BIG_FRAME_MIN.intercooler || sel.downpipeId === 'stock-25')) {
+    return { status: 'SETUP_INCOMPATIBLE', message: `A ${sel.turboId} on a stock intercooler/exhaust is a heat-soaked time bomb. Fit at least a do88 FMIC and a 3" downpipe.` };
+  }
+  // Stage 3 (standalone) demands big fuel: EV14-1000+ and a 450 pump.
+  if (sel.tuneId === 'stage3' && (sel.injectorId !== 'ev14-1000' && sel.injectorId !== 'ev14-1700' || sel.fuelPumpId !== 'walbro-450')) {
+    return { status: 'SETUP_INCOMPATIBLE', message: 'Stage 3 standalone needs EV14-1000cc+ injectors and a Walbro 450 pump. The stock ECU fuel model cannot feed this.' };
+  }
 
   // Rule A — the torque spike: big-wheel HL turbo (18T/19T) + >18psi
   // + stock rods => bent rods
@@ -80,9 +106,23 @@ export function evaluateFailure(sel: EngineSelection): { status: EngineStatus; m
   if (sel.transmissionId === 'aw55' && hp > 320 && sel.transCoolerId !== 'external') {
     return { status: 'FAILED_OVERWHELMED_TRANS', message: 'AW55-50SN overheated past 320 WHP without an external trans cooler.' };
   }
-  // M56 manual with stock clutch past ~400 WHP
-  if (sel.transmissionId === 'm56' && hp > 400 && sel.clutchId !== 'spec-stage3') {
-    return { status: 'FAILED_OVERWHELMED_TRANS', message: 'M56 survived, but the stock clutch slips past 400 WHP. Fit a Spec Stage 3 clutch.' };
+  // M56/M66 manual with stock clutch past ~400 WHP
+  if ((sel.transmissionId === 'm56' || sel.transmissionId === 'm66') && hp > 400 && sel.clutchId !== 'spec-stage3') {
+    return { status: 'FAILED_OVERWHELMED_TRANS', message: `${sel.transmissionId === 'm66' ? 'M66' : 'M56'} survived, but the stock clutch slips past 400 WHP. Fit a Spec Stage 3 clutch.` };
+  }
+  // M66 6-speed gives up past 700 WHP even with the Spec clutch
+  if (sel.transmissionId === 'm66' && hp > 700) {
+    return { status: 'FAILED_EXPLODED_GEARBOX', message: `M66 held to 700 WHP — past that the case flexed and third gear exited. This is driveline-exotic territory.` };
+  }
+  // Lean-out: fuel demand past injector or pump capacity melts a piston
+  const fuelCap = Math.min(injectorCapHp(sel), FUEL_PUMP_CAP_HP[sel.fuelPumpId]);
+  const demand = fuelDemandHp(sel);
+  if (demand > fuelCap) {
+    return { status: 'FAILED_LEAN', message: `Fuel demand (${Math.round(demand)} crank hp) exceeded the ${demand > injectorCapHp(sel) ? 'injectors' : 'fuel pump'} (${Math.round(fuelCap)} hp). It went lean and melted a piston.` };
+  }
+  // Head lift: stock bolts stretch past 24 psi, the gasket lets go
+  if (effectiveBoostTarget(sel) > 24 && sel.studsId !== 'arp-studs') {
+    return { status: 'FAILED_LIFTED_HEAD', message: `Boost past 24 psi on stock head bolts lifted the head and blew the gasket. Fit ARP studs.` };
   }
   // Overrev: weakest component lets go past its RPM ceiling
   const { limit, culprit } = rpmLimit(sel);
@@ -139,6 +179,7 @@ export function selectMetrics(sel: EngineSelection) {
   const peak = curve.reduce((a, b) => (b.hp > a.hp ? b : a), curve[0]);
   const peakCrank = curve.reduce((a, b) => (b.hpCrank > a.hpCrank ? b : a), curve[0]);
   const lossPct = Math.round((1 - TRANS_EFF[sel.transmissionId]) * 100);
+  const duty = injectorDuty(sel);
   return {
     displacementCc: disp,
     compressionRatio: engine.compressionRatio,
@@ -151,6 +192,7 @@ export function selectMetrics(sel: EngineSelection) {
     peakCrankHpRpm: peakCrank.rpm,
     drivetrainLossPct: lossPct,
     drivetrainLossHp: failed ? 0 : peakCrank.hpCrank - peak.hp,
+    injectorDutyPct: Math.round(duty * 100),
     curve: failed ? curve.map((p) => ({ ...p, hp: 0, hpCrank: 0, tqNm: 0 })) : curve,
   };
 }
