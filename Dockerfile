@@ -28,4 +28,7 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
 USER nextjs
 EXPOSE 8099
-CMD ["npm", "run", "start"]
+ENV PORT=8099 HOSTNAME=0.0.0.0
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "fetch('http://localhost:8099').then((r) => { if (!r.ok) process.exit(1); }).catch(() => process.exit(1))"
+CMD ["node", ".next/standalone/server.js"]
