@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { RoundedBox } from '@react-three/drei';
-import { BASE_ENGINES } from '@/lib/physics';
+import { BASE_ENGINES, effectiveGeometry } from '@/lib/physics';
 import { useEngineStore } from '@/store/useEngineStore';
 import { clip } from './materials';
 import { OptionalModel, MODEL_PATHS } from './OptionalModel';
@@ -18,6 +18,8 @@ import { boreR, cylX, deckY, engineLength, CYL_SPACING } from './engineGeometry'
 export function BlockAssembly({ plane }: { plane: THREE.Plane }) {
   const engineId = useEngineStore((s) => s.engineId);
   const rodsId = useEngineStore((s) => s.rodsId);
+  const crankId = useEngineStore((s) => s.crankId);
+  const pistonsId = useEngineStore((s) => s.pistonsId);
   const cutaway = useEngineStore((s) => s.cutaway);
   const cracked = useEngineStore((s) => s.status) === 'FAILED_CRACKED_BLOCK';
   const oilStarved = useEngineStore((s) => s.status) === 'FAILED_OIL_PUMP';
@@ -25,8 +27,9 @@ export function BlockAssembly({ plane }: { plane: THREE.Plane }) {
   const engine = BASE_ENGINES[engineId];
   const n = engine.cylinders;
   const len = engineLength(n);
-  const deck = deckY(engineId, rodsId);
-  const br = boreR(engineId);
+  const geo = effectiveGeometry({ engineId, crankId, pistonsId });
+  const deck = deckY(engineId, rodsId, geo.strokeMm);
+  const br = boreR(engineId, geo.boreMm);
 
   const mats = useMemo(() => {
     const cut = cutaway ? plane : null;

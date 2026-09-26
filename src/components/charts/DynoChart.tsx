@@ -107,6 +107,8 @@ ChartJS.register(dynoOverlay);
 export function DynoChart() {
   const engineId = useEngineStore((s) => s.engineId);
   const rodsId = useEngineStore((s) => s.rodsId);
+  const crankId = useEngineStore((s) => s.crankId);
+  const pistonsId = useEngineStore((s) => s.pistonsId);
   const headId = useEngineStore((s) => s.headId);
   const turboId = useEngineStore((s) => s.turboId);
   const manifoldId = useEngineStore((s) => s.manifoldId);
@@ -130,8 +132,8 @@ export function DynoChart() {
   const toggleLine = (key: string) => setHidden((h) => ({ ...h, [key]: !h[key] }));
 
   const cfg = useMemo(
-    () => ({ engineId, rodsId, headId, turboId, manifoldId, transmissionId, sleevesId, tuneId, clutchId, transCoolerId, converterId, injectorId, fuelPumpId, intercoolerId, downpipeId, studsId, valveSpringsId, boostPsi }),
-    [engineId, rodsId, headId, turboId, manifoldId, transmissionId, sleevesId, tuneId, clutchId, transCoolerId, converterId, injectorId, fuelPumpId, intercoolerId, downpipeId, studsId, valveSpringsId, boostPsi],
+    () => ({ engineId, rodsId, crankId, pistonsId, headId, turboId, manifoldId, transmissionId, sleevesId, tuneId, clutchId, transCoolerId, converterId, injectorId, fuelPumpId, intercoolerId, downpipeId, studsId, valveSpringsId, boostPsi }),
+    [engineId, rodsId, crankId, pistonsId, headId, turboId, manifoldId, transmissionId, sleevesId, tuneId, clutchId, transCoolerId, converterId, injectorId, fuelPumpId, intercoolerId, downpipeId, studsId, valveSpringsId, boostPsi],
   );
 
   const m = useMemo(
@@ -159,6 +161,8 @@ export function DynoChart() {
     return dynoCurve({
       engineId,
       rodsId: 'stock-n',
+      crankId: 'stock-crank',
+      pistonsId: 'std-bore',
       headId: 'stock-n',
       turboId: stockTurbo,
       manifoldId: needsJapanifold ? 'japanifold-s60r' : 'stock',

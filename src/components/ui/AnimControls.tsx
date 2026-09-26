@@ -22,13 +22,15 @@ export function AnimControls() {
   const tuneId = useEngineStore((s) => s.tuneId);
   const engineId = useEngineStore((s) => s.engineId);
   const rodsId = useEngineStore((s) => s.rodsId);
+  const crankId = useEngineStore((s) => s.crankId);
+  const pistonsId = useEngineStore((s) => s.pistonsId);
   const headId = useEngineStore((s) => s.headId);
   const valveSpringsId = useEngineStore((s) => s.valveSpringsId);
   const set = useEngineStore((s) => s.set);
   const rpm = useAnimRpm();
 
   const cap = maxRpm({ tuneId, engineId });
-  const { limit } = rpmLimit({ rodsId, headId, valveSpringsId });
+  const { limit } = rpmLimit({ engineId, rodsId, crankId, pistonsId, headId, valveSpringsId });
   const limited = cap < 8500;
 
   const setRpm = (v: number) => {

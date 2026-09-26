@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { useEngineStore } from '@/store/useEngineStore';
 import { useAnimRpm } from '@/lib/animClock';
-import { BASE_ENGINES, ROD_LENGTH_MM } from '@/lib/physics';
+import { BASE_ENGINES, ROD_LENGTH_MM, effectiveGeometry } from '@/lib/physics';
 
 const LINE = '#a1a1aa';
 const FAINT = '#52525b';
@@ -20,12 +20,15 @@ export function EngineLineart() {
   const [open, setOpen] = useState(true);
   const engineId = useEngineStore((s) => s.engineId);
   const rodsId = useEngineStore((s) => s.rodsId);
+  const crankId = useEngineStore((s) => s.crankId);
+  const pistonsId = useEngineStore((s) => s.pistonsId);
   const rpm = useAnimRpm();
 
   const engine = BASE_ENGINES[engineId];
   const n = engine.cylinders;
-  const bore = engine.boreMm;
-  const stroke = engine.strokeMm;
+  const geo = effectiveGeometry({ engineId, crankId, pistonsId });
+  const bore = geo.boreMm;
+  const stroke = geo.strokeMm;
   const rodLen = ROD_LENGTH_MM[rodsId];
   const ratio = rodLen / stroke;
   const pistonSpeed = ((2 * stroke) / 1000) * (rpm / 60);

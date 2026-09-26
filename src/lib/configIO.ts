@@ -11,11 +11,13 @@ import {
   TURBO_AIR,
 } from './physics';
 
-/** The 19 persisted build fields (everything that affects the simulation). */
+/** The 21 persisted build fields (everything that affects the simulation). */
 export type BuildSelection = Pick<
   EngineSelection,
   | 'engineId'
   | 'rodsId'
+  | 'crankId'
+  | 'pistonsId'
   | 'headId'
   | 'turboId'
   | 'manifoldId'
@@ -38,11 +40,13 @@ export type BuildSelection = Pick<
 const ENUM_FIELDS: Record<string, readonly string[]> = {
   engineId: Object.keys(BASE_ENGINES),
   rodsId: Object.keys(ROD_LENGTH_MM),
+  crankId: ['stock-crank', 'stroker'],
+  pistonsId: ['std-bore', 'plus-05', 'plus-10'],
   headId: ['stock-n', 'rn-swap'],
   turboId: Object.keys(TURBO_AIR),
   manifoldId: ['stock', 'japanifold-s60r', 'tubular-t3'],
   transmissionId: Object.keys(TRANS_EFF),
-  sleevesId: ['stock', 'shimmed', 'darton'],
+  sleevesId: ['stock', 'shimmed', 'billet-guard', 'darton'],
   tuneId: Object.keys(TUNE_TIMING_GAIN),
   clutchId: ['stock', 'spec-stage3'],
   transCoolerId: ['none', 'external'],
@@ -53,6 +57,12 @@ const ENUM_FIELDS: Record<string, readonly string[]> = {
   downpipeId: Object.keys(DOWNPIPE),
   studsId: ['stock-bolts', 'arp-studs'],
   valveSpringsId: ['stock-springs', 'supertech'],
+};
+
+/** Fields added after v1 exports: old saves/imports default instead of failing. */
+const MIGRATION_DEFAULTS: Record<string, string> = {
+  crankId: 'stock-crank',
+  pistonsId: 'std-bore',
 };
 
 const NUMERIC_BOUNDS: Record<string, [number, number]> = {
@@ -84,6 +94,12 @@ export function parseBuildJson(text: string): ParseResult {
   for (const [field, allowed] of Object.entries(ENUM_FIELDS)) {
     const v = obj[field];
     if (v === undefined) {
+      // Backwards compatibility: fields introduced after v1 default instead
+      // of failing, so old exports and saves keep loading.
+      if (field in MIGRATION_DEFAULTS) {
+        out[field] = MIGRATION_DEFAULTS[field];
+        continue;
+      }
       errors.push(`Missing required field: ${field}`);
     } else if (typeof v !== 'string' || !allowed.includes(v)) {
       errors.push(`Invalid ${field}: ${JSON.stringify(v)} (expected one of: ${allowed.join(', ')})`);
@@ -110,6 +126,8 @@ export function snapshotSelection(st: EngineSelection): BuildSelection {
   return {
     engineId: st.engineId,
     rodsId: st.rodsId,
+    crankId: st.crankId,
+    pistonsId: st.pistonsId,
     headId: st.headId,
     turboId: st.turboId,
     manifoldId: st.manifoldId,

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { BASE_ENGINES, TURBO_FLANGE, TURBO_MAX_SHAFT, TURBO_SCALE, maxHorsepower, shaftSpeed } from '@/lib/physics';
+import { BASE_ENGINES, TURBO_FLANGE, TURBO_MAX_SHAFT, TURBO_SCALE, effectiveGeometry, maxHorsepower, shaftSpeed } from '@/lib/physics';
 import { useEngineStore } from '@/store/useEngineStore';
 import { animClock } from '@/lib/animClock';
 import { clip } from './materials';
@@ -40,6 +40,8 @@ function PipeRun({ from, to, r, material, segments = 14 }: { from: V3; to: V3; r
 export function TurboAssembly({ plane }: { plane: THREE.Plane }) {
   const engineId = useEngineStore((s) => s.engineId);
   const rodsId = useEngineStore((s) => s.rodsId);
+  const crankId = useEngineStore((s) => s.crankId);
+  const pistonsId = useEngineStore((s) => s.pistonsId);
   const turboId = useEngineStore((s) => s.turboId);
   const manifoldId = useEngineStore((s) => s.manifoldId);
   const cutaway = useEngineStore((s) => s.cutaway);
@@ -48,7 +50,7 @@ export function TurboAssembly({ plane }: { plane: THREE.Plane }) {
   const engine = BASE_ENGINES[engineId];
   const n = engine.cylinders;
   const len = engineLength(n);
-  const deck = deckY(engineId, rodsId);
+  const deck = deckY(engineId, rodsId, effectiveGeometry({ engineId, crankId, pistonsId }).strokeMm);
   const headBase = deck + 0.05;
   const hot = maxHp > 400 || maxHp === 0;
   const big = TURBO_SCALE[turboId] ?? 1;

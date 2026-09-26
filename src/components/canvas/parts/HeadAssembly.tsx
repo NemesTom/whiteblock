@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { RoundedBox } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
-import { BASE_ENGINES } from '@/lib/physics';
+import { BASE_ENGINES, effectiveGeometry } from '@/lib/physics';
 import { useEngineStore } from '@/store/useEngineStore';
 import { animClock } from '@/lib/animClock';
 import { clip } from './materials';
@@ -24,13 +24,15 @@ const CAM_OFFSET = [-Math.PI * 0.75, Math.PI * 0.75]; // [exhaust, intake]
 export function HeadAssembly({ plane }: { plane: THREE.Plane }) {
   const engineId = useEngineStore((s) => s.engineId);
   const rodsId = useEngineStore((s) => s.rodsId);
+  const crankId = useEngineStore((s) => s.crankId);
+  const pistonsId = useEngineStore((s) => s.pistonsId);
   const cutaway = useEngineStore((s) => s.cutaway);
   const isRN = useEngineStore((s) => s.headId) === 'rn-swap';
 
   const engine = BASE_ENGINES[engineId];
   const n = engine.cylinders;
   const len = engineLength(n);
-  const deck = deckY(engineId, rodsId);
+  const deck = deckY(engineId, rodsId, effectiveGeometry({ engineId, crankId, pistonsId }).strokeMm);
   const headBase = deck + 0.05;
 
   const lobeRefs = useRef<Array<THREE.Group | null>>([]);
