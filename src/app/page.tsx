@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Sidebar } from '@/components/ui/Sidebar';
-import { CutawayToggle } from '@/components/ui/CutawayToggle';
+import { CutawayToggle, CutawayPanel } from '@/components/ui/CutawayToggle';
+import { AnimControls } from '@/components/ui/AnimControls';
 import { StatusBanner } from '@/components/ui/StatusBanner';
 import { DynoChart } from '@/components/charts/DynoChart';
 import { EngineScene } from '@/components/canvas/EngineScene';
@@ -19,7 +20,11 @@ export default function Page() {
           <Sidebar />
         </div>
         <div className="relative min-h-[320px] min-w-0 flex-1">
-          <CutawayToggle />
+          <div className="absolute right-4 top-4 z-10 flex flex-col items-end gap-2">
+            <CutawayToggle />
+            <CutawayPanel />
+          </div>
+          <AnimControls />
           <EngineScene />
         </div>
       </div>
