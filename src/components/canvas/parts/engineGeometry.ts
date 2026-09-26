@@ -52,11 +52,38 @@ export function deckY(id: EngineId, rods: RodsId): number {
 }
 
 /**
- * Crank phase for cylinder i (radians). Four-stroke firing-interval
- * spacing: 720° / n. The rigid crank carries all pins at these angles.
+ * Verified firing orders (#1 at the timing-belt/pulley end, our +X).
+ * 5-cyl 1-2-4-5-3 and 6-cyl 1-5-3-6-2-4 are factory whiteblock orders;
+ * 4-cyl 1-3-4-2 is the universal inline-4 order (no whiteblock-specific
+ * source found — flagged assumption).
+ */
+export const FIRING_ORDER: Record<number, number[]> = {
+  4: [1, 3, 4, 2],
+  5: [1, 2, 4, 5, 3],
+  6: [1, 5, 3, 6, 2, 4],
+};
+
+/** Firing-order display string for the UI. */
+export function firingOrderLabel(n: number): string {
+  return (FIRING_ORDER[n] ?? []).join('-');
+}
+
+/**
+ * Crank phase for cylinder index i (radians). Our index 0 sits at the
+ * gearbox end while cylinder #1 lives at the timing end, so the index is
+ * mirrored through cylinder numbers before looking up the order position.
+ * Four-stroke firing-interval spacing: 720° / n.
+ *
+ * Sign matters: phases DESCEND along the firing order so power strokes
+ * arrive in documented sequence as crank angle increases (a cylinder with
+ * larger phase reaches its power stroke earlier, so ascending phases
+ * would fire the order backwards).
  */
 export function firingPhase(i: number, n: number): number {
-  return (i * 4 * Math.PI) / n;
+  const order = FIRING_ORDER[n] ?? Array.from({ length: n }).map((_, k) => k + 1);
+  const cylNo = n - i;
+  const pos = order.indexOf(cylNo);
+  return (-(pos < 0 ? i : pos) * 4 * Math.PI) / n;
 }
 
 /**
