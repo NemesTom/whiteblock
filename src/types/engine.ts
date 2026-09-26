@@ -34,7 +34,9 @@ export type TurboId =
   | 'k24';
 export type ManifoldId = 'stock' | 'japanifold-s60r' | 'tubular-t3';
 export type TransmissionId = 'm56' | 'm66' | 'aw55' | 'gm-4t65e';
-export type SleevesId = 'stock' | 'shimmed' | 'darton';
+export type SleevesId = 'stock' | 'shimmed' | 'billet-guard' | 'darton';
+export type CrankId = 'stock-crank' | 'stroker';
+export type PistonsId = 'std-bore' | 'plus-05' | 'plus-10';
 export type TuneId = 'stock' | 'stage1' | 'stage2' | 'stage3';
 export type ClutchId = 'stock' | 'spec-stage3';
 export type TransCoolerId = 'none' | 'external';
@@ -90,6 +92,8 @@ export interface TurboSpec {
 export interface EngineSelection {
   engineId: EngineId;
   rodsId: RodsId;
+  crankId: CrankId;
+  pistonsId: PistonsId;
   headId: HeadId;
   turboId: TurboId;
   manifoldId: ManifoldId;
