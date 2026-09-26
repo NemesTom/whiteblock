@@ -85,15 +85,16 @@ export function evaluateFailure(sel: EngineSelection): { status: EngineStatus; m
   // it only unlocks boost, timing and revs. Starving it still melts
   // pistons through the lean rule below, which is the honest consequence.
 
-  // Rule A — the torque spike: big-wheel HL turbo (18T/19T/21H) + >18psi
-  // of EFFECTIVE boost + stock rods => bent rods. Uses the locked target,
-  // so a parked slider on the stock tune can't bend rods at 9.5 psi.
+  // Rule A — the torque spike: big-wheel HL turbo (18T/19T/21H/21TK) +
+  // >18psi of EFFECTIVE boost + stock rods => bent rods. Uses the locked
+  // target, so a parked slider on the stock tune can't bend rods at 9.5 psi.
   if (
-    (sel.turboId === 'td04-18t' || sel.turboId === 'td04-19t' || sel.turboId === 'td04-21h') &&
+    (sel.turboId === 'td04-18t' || sel.turboId === 'td04-19t' || sel.turboId === 'td04-21h' || sel.turboId === 'td04-21tk') &&
     effectiveBoostTarget(sel) > 18 &&
     (sel.rodsId === 'stock-n' || sel.rodsId === 'stock-rn')
   ) {
-    const name = sel.turboId === 'td04-18t' ? '18T' : sel.turboId === 'td04-21h' ? '21H' : '19T';
+    const names: Record<string, string> = { 'td04-18t': '18T', 'td04-19t': '19T', 'td04-21h': '21H', 'td04-21tk': '21TK' };
+    const name = names[sel.turboId] ?? sel.turboId;
     return { status: 'FAILED_BENT_RODS', message: `Violent ${name} torque spike bent the stock rods. Dyno output dropped to zero.` };
   }
   // Stock N-rods limit: 15G-class turbo pushing past 300 WHP at low rpm

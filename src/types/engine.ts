@@ -25,6 +25,7 @@ export type TurboId =
   | 'td04-19t'
   | 'td04-20t'
   | 'td04-21h'
+  | 'td04-21tk'
   | 'td06sl2-20g'
   | 'hx35'
   | 'gt3071r'
