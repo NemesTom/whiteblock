@@ -1,6 +1,6 @@
 'use client';
 
-import { Flame, Pause, Play, Repeat } from 'lucide-react';
+import { Flame, Pause, Play, Repeat, Turtle } from 'lucide-react';
 import { useEngineStore } from '@/store/useEngineStore';
 import { animClock, useAnimRpm } from '@/lib/animClock';
 import { maxRpm, rpmLimit } from '@/lib/physics';
@@ -17,6 +17,7 @@ export function AnimControls() {
   const playing = useEngineStore((s) => s.animPlaying);
   const sweep = useEngineStore((s) => s.sweepEnabled);
   const cycle = useEngineStore((s) => s.cycleHighlight);
+  const slowMo = useEngineStore((s) => s.slowMo);
   const failed = useEngineStore((s) => s.status) !== 'OK';
   const tuneId = useEngineStore((s) => s.tuneId);
   const engineId = useEngineStore((s) => s.engineId);
@@ -83,6 +84,17 @@ export function AnimControls() {
         >
           <Flame size={12} />
           Cycle
+        </button>
+        <button
+          onClick={() => set({ slowMo: !slowMo })}
+          className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+            slowMo ? 'bg-teal-400 text-black' : 'bg-zinc-700 text-zinc-200 hover:bg-zinc-600'
+          }`}
+          title="Slow-motion inspect: render the crank at a visible fraction of true revs"
+          aria-pressed={slowMo}
+        >
+          <Turtle size={12} />
+          Slow
         </button>
       </div>
       {cycle && (

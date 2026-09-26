@@ -11,7 +11,10 @@ export const Y_CRANK = 0.35; // crankshaft axis height
 export const CYL_SPACING = 0.42;
 export const CROWN_H = 0.19; // wrist-pin centre to piston crown
 export const IDLE_RPM = 800;
-/** Slow-motion factor: visual crank rev/s = rpm/60 × SLOWMO (1 rev/s at 4000). */
+/**
+ * Crank renders at true revs (slider 6000 = 100 rev/s). The inspect
+ * slow-motion factor makes valve events watchable at high rpm.
+ */
 export const SLOWMO = 0.015;
 
 export function cylinderCount(id: EngineId): number {
