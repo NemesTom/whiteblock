@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useEngineStore, selectMetrics } from '@/store/useEngineStore';
 import { animClock } from '@/lib/animClock';
-import { BASE_ENGINES, ENGINE_STOCK_BOOST_PSI, STROKER_MM, displacementCc } from '@/lib/physics';
+import { BASE_ENGINES, ENGINE_STOCK_BOOST_PSI, STROKER_MM, TURBO_WHEELS, displacementCc } from '@/lib/physics';
 import { deckHeightMm, firingOrderLabel, tdcPinHeightMm } from '@/components/canvas/parts/engineGeometry';
 import type { EngineId, EngineSelection } from '@/types/engine';
 import {
@@ -297,6 +297,7 @@ export function Sidebar() {
             ['td04-19t', 'TD04HL-19T · 2000 R / T5 upgrade · violent spike · bends stock rods'],
             ['td04-20t', 'TD04HL-20T · max stock-frame · 330 WHP · needs forged + fuel'],
             ['td04-21h', 'Kinugawa TD04HL-21H · 330–400 HP crank · biggest bolt-on'],
+            ['td04-21tk', 'Mamba TD04HL-21TK · 49.6/61 · violent spike · bends stock rods'],
             ['td06sl2-20g', 'Kinugawa TD06SL2-20G · documented B5234T build · ~380 WHP · T3 + pack'],
             ['hx35', 'Holset HX35 · budget legend · 450 WHP · needs T3 manifold + pack'],
             ['gt3071r', 'Garrett GT3071R · ball bearing · 420 WHP · needs T3 + pack'],
@@ -305,9 +306,11 @@ export function Sidebar() {
             ['pte6262', 'Precision 6262 · drag class · 600 WHP · needs everything'],
             ['k24', 'KKK K24 (S60R) · max 350 WHP · needs Japanifold'],
           ] as const
-        ).map(([id, label]) => (
-          <OptionButton key={id} active={s.turboId === id} label={label} onClick={() => pick({ turboId: id }, 'turbo')} />
-        ))}
+        ).map(([id, label]) => {
+          const w = TURBO_WHEELS[id];
+          const tag = ` · ${w.inMm}/${w.exMm}mm${w.est ? ' ~' : ''}`;
+          return <OptionButton key={id} active={s.turboId === id} label={label + tag} onClick={() => pick({ turboId: id }, 'turbo')} />;
+        })}
         <div className="mt-2 text-xs font-semibold text-zinc-300">Exhaust Manifold</div>
         <OptionButton active={s.manifoldId === 'stock'} label="Stock manifold" sub="TD04 flange" onClick={() => pick({ manifoldId: 'stock' }, 'turbo')} />
         <OptionButton active={s.manifoldId === 'japanifold-s60r'} label="S60R / Japanifold" sub="Unlocks K24 full flow · TD04 flange" onClick={() => pick({ manifoldId: 'japanifold-s60r' }, 'turbo')} />

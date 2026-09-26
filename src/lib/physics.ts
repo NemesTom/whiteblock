@@ -237,6 +237,8 @@ export const TURBO_AIR: Record<TurboId, TurboAirSpec> = {
   'td04-20t': { spoolStartRpm: 1600, fullBoostRpm: 2500, maxBoostPsi: 26, topEndDropPsi: 6.0, chokeWhp: 330 },
   /** Kinugawa 21H (21HR3, 51.6/65mm): verified bolt-on, 330–400 HP crank. */
   'td04-21h': { spoolStartRpm: 1700, fullBoostRpm: 2600, maxBoostPsi: 27, topEndDropPsi: 5.5, chokeWhp: 350 },
+  /** Mamba 21TK (49.6/61.0mm): verified catalog part, TD04 bolt-on. */
+  'td04-21tk': { spoolStartRpm: 1700, fullBoostRpm: 2600, maxBoostPsi: 27, topEndDropPsi: 5.0, chokeWhp: 360 },
   /** Kinugawa TD06SL2-20G: documented B5234T build; spool/choke estimated. */
   'td06sl2-20g': { spoolStartRpm: 2700, fullBoostRpm: 4300, maxBoostPsi: 30, topEndDropPsi: 3.0, chokeWhp: 380 },
   hx35: { spoolStartRpm: 2600, fullBoostRpm: 3500, maxBoostPsi: 32, topEndDropPsi: 3.0, chokeWhp: 450 },
@@ -258,6 +260,7 @@ export const TURBO_FLANGE: Record<TurboId, 'td04' | 't3'> = {
   'td04-19t': 'td04',
   'td04-20t': 'td04',
   'td04-21h': 'td04',
+  'td04-21tk': 'td04',
   'td06sl2-20g': 't3',
   hx35: 't3',
   gt3071r: 't3',
@@ -278,6 +281,7 @@ export const TURBO_SCALE: Record<TurboId, number> = {
   'td04-19t': 1.1,
   'td04-20t': 1.12,
   'td04-21h': 1.15,
+  'td04-21tk': 1.15,
   'td06sl2-20g': 1.4,
   hx35: 1.35,
   gt3071r: 1.3,
@@ -286,6 +290,49 @@ export const TURBO_SCALE: Record<TurboId, number> = {
   pte6262: 1.45,
   k24: 1.15,
 };
+
+export interface TurboWheelSpec {
+  /** Compressor inducer / exducer diameter, mm. */
+  inMm: number;
+  exMm: number;
+  /** Turbine inducer / exducer, mm — only where verified. */
+  turbInMm?: number;
+  turbExMm?: number;
+  blades: number;
+  /** True when any figure is interpolated rather than sourced. */
+  est?: boolean;
+  source?: string;
+}
+
+/**
+ * Compressor wheel dimensions per turbo. Verified figures from Kinugawa /
+ * Mamba / Garrett / BorgWarner / Holset / Precision / ViVA catalog data;
+ * 14T, 18T, GTX3076R and PTE exducer are family interpolations, flagged.
+ */
+export const TURBO_WHEELS: Record<TurboId, TurboWheelSpec> = {
+  'td04-13g': { inMm: 41.5, exMm: 55.7, turbInMm: 52.0, turbExMm: 45.6, blades: 12, source: 'Mamba' },
+  'td04-13t': { inMm: 40.7, exMm: 56.0, turbInMm: 52.0, turbExMm: 45.6, blades: 11, source: 'Kinugawa' },
+  'td04l-14t': { inMm: 42.0, exMm: 56.0, turbInMm: 47.2, turbExMm: 41.1, blades: 11, est: true, source: 'family interpolation' },
+  'td04-15g': { inMm: 43.4, exMm: 56.0, turbInMm: 52.0, turbExMm: 45.6, blades: 11, source: 'Kinugawa AU' },
+  'td04-16t': { inMm: 43.4, exMm: 56.0, turbInMm: 52.0, turbExMm: 45.6, blades: 11, source: 'Mamba' },
+  'td04-18t': { inMm: 45.0, exMm: 56.0, turbInMm: 52.0, turbExMm: 45.6, blades: 11, est: true, source: 'family interpolation' },
+  'td04-19t': { inMm: 46.0, exMm: 58.0, turbInMm: 52.0, turbExMm: 45.6, blades: 11, source: 'Kinugawa' },
+  'td04-20t': { inMm: 47.0, exMm: 58.0, turbInMm: 52.0, turbExMm: 45.6, blades: 11, source: 'Kinugawa' },
+  'td04-21h': { inMm: 51.6, exMm: 65.0, turbInMm: 52.0, turbExMm: 45.6, blades: 11, source: 'Kinugawa' },
+  'td04-21tk': { inMm: 49.6, exMm: 61.0, turbInMm: 52.0, turbExMm: 45.6, blades: 11, source: 'Mamba catalog' },
+  'td06sl2-20g': { inMm: 52.3, exMm: 68.0, blades: 11, source: 'Kinugawa billet spec' },
+  hx35: { inMm: 54.0, exMm: 77.0, turbInMm: 70.0, turbExMm: 60.0, blades: 7, source: 'Holset' },
+  gt3071r: { inMm: 53.0, exMm: 71.0, turbInMm: 60.0, turbExMm: 55.0, blades: 11, source: 'Garrett' },
+  efr7163: { inMm: 57.0, exMm: 71.0, turbInMm: 63.0, turbExMm: 56.0, blades: 11, source: 'BorgWarner' },
+  gtx3076r: { inMm: 58.0, exMm: 76.0, blades: 11, est: true, source: 'Gen1 spec, unverified' },
+  pte6262: { inMm: 62.0, exMm: 82.0, turbInMm: 71.0, turbExMm: 62.0, blades: 11, est: true, source: '62mm CEA inducer verified; exducer interpolated' },
+  k24: { inMm: 45.8, exMm: 62.0, blades: 11, source: 'ViVA Performance' },
+};
+
+/** Compressor trim % from inducer/exducer. */
+export function turboTrim(spec: TurboWheelSpec): number {
+  return Math.round(((spec.inMm * spec.inMm) / (spec.exMm * spec.exMm)) * 100);
+}
 
 /** Factory-fit turbo per engine — the dyno anchor baseline. */
 export const ENGINE_STOCK_TURBO: Record<EngineId, TurboId> = {
@@ -567,6 +614,7 @@ export const TURBO_MAX_SHAFT: Record<TurboId, number> = {
   'td04-19t': 180000,
   'td04-20t': 175000,
   'td04-21h': 170000,
+  'td04-21tk': 170000,
   'td06sl2-20g': 135000,
   hx35: 150000,
   gt3071r: 160000,
