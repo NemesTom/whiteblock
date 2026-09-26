@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# The Whiteblock Visualizer & Tuning Configurator
 
-## Getting Started
+Interactive 3D Volvo Whiteblock tuning simulator: configure block, internals, head,
+turbo, transmission and ECU — watch the live dyno, telemetry and failure physics.
 
-First, run the development server:
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # http://localhost:8099
+npm run build
+npm run start    # http://localhost:8099 (production preview)
+npm run build:package  # build + timestamped tarball in builds/
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Architecture
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `src/types/engine.ts` — strict TS interfaces for engines, components, metrics
+- `src/lib/physics.ts` — hardcoded Whiteblock lore DB, VE/BSFC-style formulas,
+  `Max_HP = Turbo_Flow_Limit · (VE/100) · Fuel_Mod`, bezier dyno curves
+- `src/store/useEngineStore.ts` — Zustand state + Volvospeed failure evaluator
+- `src/components/ui/` — Sidebar configurator, cutaway toggle, status banner
+- `src/components/canvas/EngineScene.tsx` — R3F scene, clipping plane, placeholders
+- `src/components/charts/DynoChart.tsx` — Chart.js WHP / torque graph + telemetry
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Asset pipeline
 
-## Learn More
+Drop user scans/CAD (converted to `.glb`) into `public/models/`:
 
-To learn more about Next.js, take a look at the following resources:
+| Part | Path |
+|---|---|
+| B5234T3 block (MakerWorld ZECIORTECH) | `public/models/b5234t3_block.glb` |
+| Intake/exhaust flanges (GrabCAD) | `public/models/b523_flanges.glb` |
+| TD04 turbo (GrabCAD T3 flange) | `public/models/td04_19t.glb` |
+| S60R/Japanifold manifold (Cults3D/Yeggi) | `public/models/t5_exhaust_manifold.glb` |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+`OptionalModel` HEAD-checks each path: placeholders render until the file lands,
+then the real model loads with zero code changes. Raw CAD (`.step/.stp/.stl.raw`)
+is git-ignored; commit only optimized `.glb`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Simulation rules
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Rule A (torque spike):** 19T + boost >18psi + stock rods → `FAILED_BENT_RODS`
+- **Rule B (cracked sleeve):** 83mm bore + >350 WHP + stock sleeves → `FAILED_CRACKED_BLOCK`
+- **Rule C (T6 glass cannon):** T6 + stock 4T65-E + Stage 2 → `FAILED_EXPLODED_GEARBOX`
+- AW55 >320 WHP without cooler, M56 >400 WHP on stock clutch also fail.
+- Failures zero the dyno, flash the banner, highlight rods red + shake the camera.
+- Manifold glows (`emissiveIntensity 2`) above 400 WHP.
