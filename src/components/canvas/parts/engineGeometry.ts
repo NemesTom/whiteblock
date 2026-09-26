@@ -11,6 +11,8 @@ export const Y_CRANK = 0.35; // crankshaft axis height
 export const CYL_SPACING = 0.42;
 export const CROWN_H = 0.19; // wrist-pin centre to piston crown
 export const IDLE_RPM = 800;
+/** Slow-motion factor: visual crank rev/s = rpm/60 × SLOWMO (1 rev/s at 4000). */
+export const SLOWMO = 0.015;
 
 export function cylinderCount(id: EngineId): number {
   return BASE_ENGINES[id].cylinders;
@@ -61,4 +63,44 @@ export function firingPhase(i: number, n: number): number {
 export function pinTopY(theta: number, r: number, l: number): number {
   const s = r * Math.sin(theta);
   return Y_CRANK + r * Math.cos(theta) + Math.sqrt(Math.max(1e-6, l * l - s * s));
+}
+
+/** Fractional position within the 720° cycle (0..4, one unit per stroke). */
+export function cyclePos(theta: number, phase: number): number {
+  const deg = (((theta + phase) * 180) / Math.PI) % 720;
+  const c = deg < 0 ? deg + 720 : deg;
+  return c / 180;
+}
+
+/** Four-stroke index for a cylinder: 0 intake · 1 compression · 2 power · 3 exhaust. */
+export type StrokeIndex = 0 | 1 | 2 | 3;
+
+/**
+ * Stroke state from crank angle θ (rad) + cylinder phase (rad).
+ * A 720° cycle split into four 180° strokes, offset per firing interval.
+ */
+export function strokeOf(theta: number, phase: number): StrokeIndex {
+  return Math.floor(cyclePos(theta, phase)) as StrokeIndex;
+}
+
+/** Cycle-highlight colors: suck (intake) · squeeze · bang · blow (exhaust). */
+export const STROKE_COLORS: Record<StrokeIndex, string> = {
+  0: '#38bdf8',
+  1: '#facc15',
+  2: '#ff4400',
+  3: '#9ca3af',
+};
+
+/** Full valve lift travel in scene units. */
+export const VALVE_LIFT_MAX = 0.05;
+
+/**
+ * Valve lift (0..1): intake peaks mid-intake-stroke, exhaust peaks
+ * mid-exhaust-stroke, seated elsewhere (overlap ignored).
+ */
+export function valveLift(theta: number, phase: number, isExhaust: boolean): number {
+  const c = cyclePos(theta, phase);
+  if (!isExhaust && c >= 0 && c < 1) return Math.sin(Math.PI * c);
+  if (isExhaust && c >= 3 && c < 4) return Math.sin(Math.PI * (c - 3));
+  return 0;
 }

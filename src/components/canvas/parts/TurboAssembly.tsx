@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { BASE_ENGINES, maxHorsepower } from '@/lib/physics';
+import { BASE_ENGINES, TURBO_MAX_SHAFT, maxHorsepower, shaftSpeed } from '@/lib/physics';
 import { useEngineStore } from '@/store/useEngineStore';
 import { animClock } from '@/lib/animClock';
 import { clip } from './materials';
@@ -44,6 +44,13 @@ export function TurboAssembly({ plane }: { plane: THREE.Plane }) {
   const big = TURBO_SCALE[turboId] ?? 1;
 
   const shaftRef = useRef<THREE.Group>(null);
+  const shaftVis = useRef(0); // 0..1 shaft load with spool inertia
+  const burst = useEngineStore((s) => s.status) === 'FAILED_TURBO_OVERSPEED';
+
+  // Burst wheel: visibly damaged once it lets go.
+  useEffect(() => {
+    if (shaftRef.current) shaftRef.current.scale.setScalar(burst ? 0.7 : 1);
+  }, [burst]);
 
   const mats = useMemo(
     () => ({
@@ -149,12 +156,16 @@ export function TurboAssembly({ plane }: { plane: THREE.Plane }) {
     [housings],
   );
 
-  // Compressor wheel spools with the engine (seized when failed).
+  // Shaft follows engine load with spool inertia: winds up over ~1.5 s,
+  // coasts down when paused or seized. No more eternal spinning.
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 0.05);
     const st = useEngineStore.getState();
-    if (shaftRef.current && st.animPlaying && st.status === 'OK') {
-      shaftRef.current.rotation.x += dt * (8 + animClock.rpm / 180);
+    const running = st.animPlaying && st.status === 'OK';
+    const target = running ? shaftSpeed(st, animClock.rpm) / TURBO_MAX_SHAFT[st.turboId] : 0;
+    shaftVis.current += (Math.min(1.3, target) - shaftVis.current) * (1 - Math.exp(-dt / 1.5));
+    if (shaftRef.current) {
+      shaftRef.current.rotation.x += dt * shaftVis.current * 45;
     }
   });
 

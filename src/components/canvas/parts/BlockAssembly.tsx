@@ -20,6 +20,7 @@ export function BlockAssembly({ plane }: { plane: THREE.Plane }) {
   const rodsId = useEngineStore((s) => s.rodsId);
   const cutaway = useEngineStore((s) => s.cutaway);
   const cracked = useEngineStore((s) => s.status) === 'FAILED_CRACKED_BLOCK';
+  const oilStarved = useEngineStore((s) => s.status) === 'FAILED_OIL_PUMP';
 
   const engine = BASE_ENGINES[engineId];
   const n = engine.cylinders;
@@ -35,7 +36,16 @@ export function BlockAssembly({ plane }: { plane: THREE.Plane }) {
         cut,
       ),
       deck: clip(new THREE.MeshStandardMaterial({ color: '#c9ced4', metalness: 0.85, roughness: 0.3 }), cut),
-      sump: clip(new THREE.MeshStandardMaterial({ color: '#2e3236', metalness: 0.6, roughness: 0.55 }), cut),
+      sump: clip(
+        new THREE.MeshStandardMaterial({
+          color: '#2e3236',
+          emissive: oilStarved ? '#ff2200' : '#000000',
+          emissiveIntensity: oilStarved ? 0.8 : 0,
+          metalness: 0.6,
+          roughness: 0.55,
+        }),
+        cut,
+      ),
       liner: clip(
         new THREE.MeshStandardMaterial({ color: '#4b4f55', metalness: 0.9, roughness: 0.35 }),
         cut,
@@ -44,7 +54,7 @@ export function BlockAssembly({ plane }: { plane: THREE.Plane }) {
       dark: new THREE.MeshStandardMaterial({ color: '#1f2124', metalness: 0.5, roughness: 0.6 }),
     };
     return m;
-  }, [plane, cutaway, cracked]);
+  }, [plane, cutaway, cracked, oilStarved]);
 
   useEffect(
     () => () => {
