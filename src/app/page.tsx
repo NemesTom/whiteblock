@@ -3,6 +3,7 @@ import { Sidebar } from '@/components/ui/Sidebar';
 import { CutawayToggle, CutawayPanel } from '@/components/ui/CutawayToggle';
 import { AnimControls } from '@/components/ui/AnimControls';
 import { EngineLineart } from '@/components/ui/EngineLineart';
+import { TurboLineart } from '@/components/ui/TurboLineart';
 import { StatusBanner } from '@/components/ui/StatusBanner';
 import { DynoChart } from '@/components/charts/DynoChart';
 import { EngineScene } from '@/components/canvas/EngineScene';
@@ -27,6 +28,7 @@ export default function Page() {
           </div>
           <AnimControls />
           <EngineLineart />
+          <TurboLineart />
           <EngineScene />
         </div>
       </div>
