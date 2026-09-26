@@ -42,9 +42,8 @@ export function AnimControls() {
       <div className="flex items-center gap-2 rounded-full bg-zinc-900/90 py-1.5 pl-2 pr-4 text-white shadow-lg backdrop-blur">
         <button
           onClick={() => set({ animPlaying: !playing })}
-          className="rounded-full bg-sky-600 p-2 hover:bg-sky-500 disabled:opacity-40"
-          disabled={failed}
-          title={failed ? 'Engine seized — lower the rpm and fix the build to spin again' : playing ? 'Pause crankshaft' : 'Spin crankshaft'}
+          className="rounded-full bg-sky-600 p-2 hover:bg-sky-500"
+          title={failed ? 'Engine seized — motion stays frozen until the build is fixed' : playing ? 'Pause crankshaft' : 'Spin crankshaft'}
           aria-label={playing ? 'Pause' : 'Play'}
         >
           {playing ? <Pause size={15} /> : <Play size={15} />}
@@ -57,7 +56,7 @@ export function AnimControls() {
             max={cap}
             step={100}
             value={Math.min(Math.round(rpm / 100) * 100, cap)}
-            disabled={sweep || failed}
+            disabled={sweep}
             onChange={(e) => setRpm(Number(e.target.value))}
             className="w-36"
             aria-label="Engine RPM"
@@ -66,8 +65,7 @@ export function AnimControls() {
         </label>
         <button
           onClick={() => set({ sweepEnabled: !sweep })}
-          disabled={failed}
-          className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold disabled:opacity-40 ${
+          className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
             sweep ? 'bg-amber-400 text-black' : 'bg-zinc-700 text-zinc-200 hover:bg-zinc-600'
           }`}
           title="Sweep the dyno: rpm climbs to the limiter and loops"
