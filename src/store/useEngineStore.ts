@@ -7,11 +7,14 @@ import {
   FUEL_PUMP_CAP_HP,
   ROD_LENGTH_MM,
   ROD_LIMIT_WHP,
+  SLEEVE_CRACK_WHP,
   TRANS_EFF,
   TURBO_MAX_SHAFT,
   displacementCc,
   dynoCurve,
   effectiveBoostTarget,
+  effectiveCompressionRatio,
+  effectiveGeometry,
   fuelDemandHp,
   injectorCapHp,
   injectorDuty,
@@ -22,6 +25,7 @@ import {
   shaftSpeed,
   volumetricEfficiency,
 } from '@/lib/physics';
+import { deckHeightMm, tdcPinHeightMm } from '@/components/canvas/parts/engineGeometry';
 
 interface EngineStore extends EngineSelection {
   set: (patch: Partial<EngineSelection>) => void;
@@ -35,6 +39,8 @@ interface EngineStore extends EngineSelection {
 const DEFAULTS: EngineSelection = {
   engineId: 'B5234T3',
   rodsId: 'stock-n',
+  crankId: 'stock-crank',
+  pistonsId: 'std-bore',
   headId: 'stock-n',
   turboId: 'td04-15g',
   manifoldId: 'stock',
@@ -96,9 +102,16 @@ export function evaluateFailure(sel: EngineSelection): { status: EngineStatus; m
       return { status: 'FAILED_BENT_RODS', message: `Power (${hp} WHP) exceeded ${sel.rodsId} rod limit (${ROD_LIMIT_WHP[sel.rodsId]} WHP). Rods failed.` };
     }
   }
-  // Rule B — cracked sleeve: 83mm bore + >350 WHP + stock sleeves
-  if (engine.boreMm >= 83 && hp > 350 && sel.sleevesId === 'stock') {
-    return { status: 'FAILED_CRACKED_BLOCK', message: 'Thin 83mm cylinder walls cracked above 350 WHP on stock sleeves. Add shims or Darton sleeves.' };
+  // Rule B — cracked sleeve: tiered WHP ceiling per block prep (83mm+ bores)
+  const crackAt = SLEEVE_CRACK_WHP[sel.sleevesId];
+  if (engine.boreMm >= 83 && hp > crackAt) {
+    const next =
+      sel.sleevesId === 'stock'
+        ? 'Fit block shims (good to 450).'
+        : sel.sleevesId === 'shimmed'
+          ? 'Fit the billet block guard (good to 600).'
+          : 'Only Darton sleeves survive up here.';
+    return { status: 'FAILED_CRACKED_BLOCK', message: `Thin 83mm cylinder walls cracked at ${hp} WHP on ${sel.sleevesId === 'stock' ? 'stock sleeves' : sel.sleevesId} (limit ${crackAt}). ${next}` };
   }
   // Rule C — T6 glass cannon (both 2.8 and 2.9 twin-turbo sixes)
   if ((sel.engineId === 'B6284T' || sel.engineId === 'B6294T') && sel.transmissionId === 'gm-4t65e' && sel.tuneId === 'stage2') {
@@ -136,7 +149,7 @@ export function evaluateFailure(sel: EngineSelection): { status: EngineStatus; m
   const { limit, culprit } = rpmLimit(sel);
   if (sel.animRpm > limit) {
     if (culprit === 'rods') {
-      return { status: 'FAILED_THROWN_ROD', message: `Revved to ${sel.animRpm} rpm — stock rod bolts stretched and threw a rod (limit ${limit}). Forged bottom end revs to 8500.` };
+      return { status: 'FAILED_THROWN_ROD', message: `Revved to ${sel.animRpm} rpm — rod bolts stretched and threw a rod (limit ${limit}). Forged bottom end revs higher.` };
     }
     if (culprit === 'head') {
       return { status: 'FAILED_DROPPED_VALVE', message: `Revved to ${sel.animRpm} rpm — lifters pumped up, a valve floated and met a piston (head limit ${limit}). RN solid-lifter head revs to 7800.` };
@@ -177,9 +190,9 @@ export const useEngineStore = create<EngineStore>()((set) => ({
 
 /** Selectors for derived telemetry. */
 export function selectMetrics(sel: EngineSelection) {
-  const engine = BASE_ENGINES[sel.engineId];
-  const disp = Math.round(displacementCc(engine.boreMm, engine.strokeMm, engine.cylinders));
-  const rsr = rodStrokeRatio(ROD_LENGTH_MM[sel.rodsId], engine.strokeMm);
+  const geo = effectiveGeometry(sel);
+  const disp = Math.round(displacementCc(geo.boreMm, geo.strokeMm, geo.cylinders));
+  const rsr = rodStrokeRatio(ROD_LENGTH_MM[sel.rodsId], geo.strokeMm);
   const ve = volumetricEfficiency(sel.headId);
   const maxHp = maxHorsepower(sel);
   const curve = dynoCurve(sel);
@@ -190,7 +203,7 @@ export function selectMetrics(sel: EngineSelection) {
   const duty = injectorDuty(sel);
   return {
     displacementCc: disp,
-    compressionRatio: engine.compressionRatio,
+    compressionRatio: effectiveCompressionRatio(sel),
     rodStrokeRatio: Math.round(rsr * 100) / 100,
     volumetricEfficiency: ve,
     maxHp: failed ? 0 : maxHp,
@@ -201,6 +214,8 @@ export function selectMetrics(sel: EngineSelection) {
     drivetrainLossPct: lossPct,
     drivetrainLossHp: failed ? 0 : peakCrank.hpCrank - peak.hp,
     injectorDutyPct: Math.round(duty * 100),
+    deckHeightMm: deckHeightMm(sel),
+    tdcPinHeightMm: tdcPinHeightMm(sel),
     curve: failed ? curve.map((p) => ({ ...p, hp: 0, hpCrank: 0, tqNm: 0 })) : curve,
   };
 }
