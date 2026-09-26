@@ -62,3 +62,42 @@ is git-ignored; commit only optimized `.glb`.
 - AW55 >320 WHP without cooler, M56 >400 WHP on stock clutch also fail.
 - Failures zero the dyno, flash the banner, highlight rods red + shake the camera.
 - Manifold glows (`emissiveIntensity 2`) above 400 WHP.
+
+## Sharing builds (no accounts, no server state)
+
+Setups stay 100% client-side. To send someone an exact build:
+
+- **Share link** — "Share link" copies a URL with the validated 21-field build
+  embedded in the location hash (`#b=…`, ~1 KB). Opening it loads the build
+  after strict validation; corrupt links are ignored with a console warning.
+- **Files** — download any saved build or the current setup as
+  `.whiteblock.json`; upload reuses the same strict import validator.
+- **Saved builds** — named slots in `localStorage` (`whiteblock-configs-v1`,
+  max 20), validated again on load so old saves migrate instead of breaking.
+
+Deliberately no cookies/sessions: cookies are per-browser like `localStorage`
+but capped at ~4 KB and sent on every request — they cannot share anything
+between people or devices, so they add nothing here.
+
+## Self-hosting on a VPS (Docker)
+
+```bash
+docker build -t whiteblock .
+docker run -d --name whiteblock --restart unless-stopped -p 8099:8099 whiteblock
+# → http://YOUR-SERVER:8099
+```
+
+Put Caddy/Nginx in front for HTTPS (example Caddyfile):
+
+```caddy
+visualizer.example.com {
+  reverse_proxy localhost:8099
+}
+```
+
+Security notes for public exposure: the image contains no secrets (there are
+none in the repo — enforced by `.gitignore` + the no-hardcoded-secrets rule);
+all user content (saved builds, imports, share links, uploads) runs through
+the strict `parseBuildJson` validator, and imported strings render via React
+escaping, so there is no injection sink. There are no API routes to rate-limit —
+the server only serves the app.

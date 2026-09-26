@@ -1,0 +1,19 @@
+# Build context only: source, public assets, manifests. Excludes everything
+# the multi-stage Dockerfile reinstalls or regenerates itself.
+node_modules
+.next
+out
+build
+builds
+coverage
+.git
+.gitignore
+Dockerfile*
+.dockerignore
+.env*
+!.env.example
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+.DS_Store
