@@ -22,6 +22,8 @@ export type EngineStatus =
   | 'FAILED_EXPLODED_GEARBOX'
   | 'FAILED_OVERWHELMED_TRANS';
 
+export type CutawayAxis = 'x' | 'y' | 'z';
+
 export interface BaseEngineSpec {
   id: EngineId;
   label: string;
@@ -60,7 +62,17 @@ export interface EngineSelection {
   transCoolerId: TransCoolerId;
   boostPsi: number;
   cutaway: boolean;
+  cutawayAxis: CutawayAxis;
+  cutawayOffset: number;
+  cutawayFlip: boolean;
   focusedPart: string | null;
+  /** Rotating-assembly playback + dyno sweep cursor. */
+  animPlaying: boolean;
+  /** Visual crank speed in rpm (slow-motion) when not sweeping. */
+  animSpeed: number;
+  sweepEnabled: boolean;
+  /** Live engine speed for the chart cursor / telemetry readout. */
+  animRpm: number;
 }
 
 export interface DerivedMetrics {
@@ -79,6 +91,7 @@ export interface DynoPoint {
   rpm: number;
   hp: number;
   tqNm: number;
+  boostPsi: number;
 }
 
 export interface ChartDataset {
