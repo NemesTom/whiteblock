@@ -1,7 +1,7 @@
 'use client';
 
 import { useEngineStore } from '@/store/useEngineStore';
-import { BASE_ENGINES } from '@/lib/physics';
+import { BASE_ENGINES, ENGINE_STOCK_BOOST_PSI } from '@/lib/physics';
 import { Accordion, OptionButton } from './Accordion';
 
 const FOCUS: Record<string, string> = {
@@ -95,7 +95,12 @@ export function Sidebar() {
         <OptionButton active={s.manifoldId === 'stock'} label="Stock manifold" onClick={() => pick({ manifoldId: 'stock' }, 'turbo')} />
         <OptionButton active={s.manifoldId === 'japanifold-s60r'} label="S60R / Japanifold" sub="Unlocks K24 full flow" onClick={() => pick({ manifoldId: 'japanifold-s60r' }, 'turbo')} />
         <label className="mt-3 block text-xs text-zinc-300">
-          Boost: <span className="font-bold text-sky-300">{s.boostPsi} psi</span>
+          Boost:{' '}
+          <span className="font-bold text-sky-300">
+            {s.tuneId === 'stock'
+              ? `factory ${ENGINE_STOCK_BOOST_PSI[s.engineId]} psi (locked on stock tune)`
+              : `${s.boostPsi} psi`}
+          </span>
           <input
             type="range"
             min={8}
@@ -104,6 +109,7 @@ export function Sidebar() {
             value={s.boostPsi}
             onChange={(e) => s.set({ boostPsi: Number(e.target.value) })}
             className="mt-1 w-full"
+            title="Takes effect on Stage 1 / Stage 2"
           />
         </label>
       </Accordion>
