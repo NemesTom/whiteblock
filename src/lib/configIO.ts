@@ -72,6 +72,57 @@ const NUMERIC_BOUNDS: Record<string, [number, number]> = {
 
 export type ParseResult = { ok: true; selection: BuildSelection } | { ok: false; errors: string[] };
 
+/** Canonical compact key order for share links (stable across versions). */
+const SHARE_KEYS = [
+  'engineId',
+  'rodsId',
+  'crankId',
+  'pistonsId',
+  'headId',
+  'turboId',
+  'manifoldId',
+  'transmissionId',
+  'sleevesId',
+  'tuneId',
+  'clutchId',
+  'transCoolerId',
+  'converterId',
+  'injectorId',
+  'fuelPumpId',
+  'intercoolerId',
+  'downpipeId',
+  'studsId',
+  'valveSpringsId',
+  'boostPsi',
+  'animRpm',
+] as const;
+
+/**
+ * Encode a build selection into a URL-safe string (~0.7–1 KB).
+ * Browser-safe base64url of the canonical JSON (TextEncoder, no Node APIs).
+ */
+export function encodeShareSelection(sel: BuildSelection): string {
+  const ordered: Record<string, unknown> = {};
+  for (const k of SHARE_KEYS) ordered[k] = sel[k];
+  const bytes = new TextEncoder().encode(JSON.stringify(ordered));
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** Decode a share string back through the strict validator. */
+export function decodeShareSelection(code: string): ParseResult {
+  try {
+    const b64 = code.replace(/-/g, '+').replace(/_/g, '/');
+    const bin = atob(b64);
+    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+    const text = new TextDecoder().decode(bytes);
+    return parseBuildJson(text);
+  } catch {
+    return { ok: false, errors: ['Share link is corrupted or truncated.'] };
+  }
+}
+
 /**
  * Validate pasted JSON (export shape `{selection, result?}` or a bare
  * selection). Unknown enum values, missing fields and malformed JSON are

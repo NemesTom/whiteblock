@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useEngineStore, selectMetrics } from '@/store/useEngineStore';
 import { animClock } from '@/lib/animClock';
 import { BASE_ENGINES, ENGINE_STOCK_BOOST_PSI, STROKER_MM, TURBO_WHEELS, displacementCc } from '@/lib/physics';
 import { deckHeightMm, firingOrderLabel, tdcPinHeightMm } from '@/components/canvas/parts/engineGeometry';
 import type { EngineId, EngineSelection } from '@/types/engine';
 import {
+  decodeShareSelection,
   deleteBuild,
+  encodeShareSelection,
   loadSavedBuilds,
   parseBuildJson,
   saveBuild,
@@ -50,6 +52,7 @@ export function Sidebar() {
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [saveName, setSaveName] = useState('');
   const [savedBuilds, setSavedBuilds] = useState<SavedBuild[]>(() => loadSavedBuilds());
+  const [uploadError, setUploadError] = useState<string[] | null>(null);
 
   const pick = (patch: Parameters<typeof s.set>[0], focusKey: string) => {
     s.set({ ...patch, focusedPart: FOCUS[focusKey] ?? null });
@@ -99,6 +102,42 @@ export function Sidebar() {
     setSaveName('');
   };
 
+  /** Download a build selection as a .whiteblock.json file. */
+  const downloadBuildFile = (name: string, selection: ReturnType<typeof snapshotSelection>) => {
+    const blob = new Blob([JSON.stringify({ selection }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${name.replace(/[^a-z0-9-_]+/gi, '_').slice(0, 40) || 'whiteblock-build'}.whiteblock.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadCurrentBuild = () => {
+    downloadBuildFile(`whiteblock-${useEngineStore.getState().engineId}`, snapshotSelection(useEngineStore.getState()));
+  };
+
+  /** Upload path shares the strict import validator — no duplicate logic. */
+  const uploadBuildFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const parsed = parseBuildJson(typeof reader.result === 'string' ? reader.result : '');
+      if (!parsed.ok) {
+        setUploadError(parsed.errors);
+        return;
+      }
+      setUploadError(null);
+      applySelection(parsed.selection);
+    };
+    reader.onerror = () => setUploadError(['Could not read that file.']);
+    reader.readAsText(file);
+  };
+
   /** Synchronous legacy copy — must run inside the click gesture. */
   const legacyCopy = (text: string): boolean => {
     try {
@@ -117,27 +156,61 @@ export function Sidebar() {
     }
   };
 
-  const copyBuildJson = async () => {
-    const text = buildJsonText();
-    // 1. Legacy sync path first: valid only inside the user gesture.
-    if (legacyCopy(text)) {
-      setCopyState('copied');
-      window.setTimeout(() => setCopyState('idle'), 2000);
-      return;
-    }
-    // 2. Async Clipboard API (needs secure context + permission).
+  /** Shared 3-tier copy: sync gesture path, async Clipboard API, else false. */
+  const attemptCopy = async (text: string): Promise<boolean> => {
+    if (legacyCopy(text)) return true;
     try {
       await navigator.clipboard.writeText(text);
-      setCopyState('copied');
-      window.setTimeout(() => setCopyState('idle'), 2000);
-      return;
+      return true;
     } catch (err) {
       console.error('[whiteblock] clipboard copy failed:', err);
+      return false;
     }
-    // 3. Last resort: modal with selectable text for manual copy.
+  };
+
+  const flashCopied = () => {
+    setCopyState('copied');
+    window.setTimeout(() => setCopyState('idle'), 2000);
+  };
+
+  const copyBuildJson = async () => {
+    const text = buildJsonText();
+    if (await attemptCopy(text)) {
+      flashCopied();
+      return;
+    }
+    // Last resort: modal with selectable text for manual copy.
     setFallbackText(text);
     setCopyState('error');
   };
+
+  const copyShareLink = async () => {
+    const code = encodeShareSelection(snapshotSelection(useEngineStore.getState()));
+    const url = `${window.location.origin}${window.location.pathname}#b=${code}`;
+    if (await attemptCopy(url)) {
+      flashCopied();
+      return;
+    }
+    setFallbackText(url);
+    setCopyState('error');
+  };
+
+  // Startup: apply a shared build from the location hash once, then strip it.
+  const hashApplied = useRef(false);
+  useEffect(() => {
+    if (hashApplied.current) return;
+    hashApplied.current = true;
+    const match = window.location.hash.match(/#b=([A-Za-z0-9\-_]+)/);
+    if (!match) return;
+    const parsed = decodeShareSelection(match[1]);
+    if (!parsed.ok) {
+      console.warn('[whiteblock] ignoring invalid share link:', parsed.errors);
+      return;
+    }
+    animClock.jumpTo(parsed.selection.animRpm);
+    useEngineStore.getState().set({ ...parsed.selection, focusedPart: null });
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }, []);
 
   return (
     <aside className="flex h-full w-full flex-col overflow-y-auto bg-zinc-950 text-zinc-100 lg:w-80 lg:min-w-80">
@@ -157,6 +230,13 @@ export function Sidebar() {
             title="Copy the full build (all components + status + peaks) as JSON for bug reports"
           >
             {copyState === 'copied' ? 'Copied!' : copyState === 'error' ? 'Copy failed — see below' : 'Copy build JSON'}
+          </button>
+          <button
+            onClick={copyShareLink}
+            className="rounded bg-zinc-800 px-2 py-1 text-xs hover:bg-zinc-700"
+            title="Copy a shareable link that opens this exact build"
+          >
+            Share link
           </button>
           <button
             onClick={() => {
@@ -422,6 +502,29 @@ export function Sidebar() {
             Save
           </button>
         </div>
+        <div className="mb-2 flex gap-1.5">
+          <button
+            onClick={downloadCurrentBuild}
+            className="flex-1 rounded bg-zinc-800 px-2 py-1 text-xs hover:bg-zinc-700"
+            title="Download the current build as a .whiteblock.json file"
+          >
+            Download .json
+          </button>
+          <label
+            className="flex-1 cursor-pointer rounded bg-zinc-800 px-2 py-1 text-center text-xs hover:bg-zinc-700"
+            title="Load a build from a .whiteblock.json file"
+          >
+            Upload .json
+            <input type="file" accept=".json,.whiteblock.json,application/json" className="hidden" onChange={uploadBuildFile} />
+          </label>
+        </div>
+        {uploadError !== null && (
+          <ul className="mb-2 max-h-32 overflow-y-auto rounded border border-red-700 bg-red-950/40 p-2 text-[11px] text-red-300">
+            {uploadError.map((e) => (
+              <li key={e}>• {e}</li>
+            ))}
+          </ul>
+        )}
         {savedBuilds.length === 0 && <p className="text-[11px] text-zinc-500">No saved builds yet — name the current setup and hit Save.</p>}
         {savedBuilds.map((b) => (
           <div key={b.name} className="mb-1.5 flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5">
@@ -440,6 +543,13 @@ export function Sidebar() {
               className="rounded bg-zinc-700 px-2 py-0.5 text-[11px] hover:bg-zinc-600"
             >
               Load
+            </button>
+            <button
+              onClick={() => downloadBuildFile(b.name, b.selection)}
+              className="rounded bg-zinc-700 px-2 py-0.5 text-[11px] hover:bg-zinc-600"
+              title={`Download ${b.name} as a file`}
+            >
+              ↓
             </button>
             <button
               onClick={() => setSavedBuilds(deleteBuild(b.name))}
