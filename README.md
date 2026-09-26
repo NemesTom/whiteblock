@@ -16,12 +16,18 @@ npm run build:package  # build + timestamped tarball in builds/
 ## Architecture
 
 - `src/types/engine.ts` — strict TS interfaces for engines, components, metrics
-- `src/lib/physics.ts` — hardcoded Whiteblock lore DB, VE/BSFC-style formulas,
-  `Max_HP = Turbo_Flow_Limit · (VE/100) · Fuel_Mod`, bezier dyno curves
+- `src/lib/physics.ts` — hardcoded Whiteblock lore DB, torque-first dyno model
+  (`TQ = k·disp·VE·PR·timing`, `HP = T·rpm/5252`, dual-anchor factory calibration),
+  per-turbo boost curves with spool, choke and top-end decay
+- `src/lib/animClock.ts` — mutable animation clock (no render storm) for crank/cursor sync
 - `src/store/useEngineStore.ts` — Zustand state + Volvospeed failure evaluator
-- `src/components/ui/` — Sidebar configurator, cutaway toggle, status banner
-- `src/components/canvas/EngineScene.tsx` — R3F scene, clipping plane, placeholders
-- `src/components/charts/DynoChart.tsx` — Chart.js WHP / torque graph + telemetry
+- `src/components/ui/` — Sidebar configurator, cutaway toggle + axis/offset/flip panel,
+  playback/sweep controls, status banner
+- `src/components/canvas/` — R3F scene split into `parts/`: Block, Head (cams/valves/
+  intake), RotatingAssembly (slider-crank kinematics), Turbo (spinning wheel),
+  Transmission, CutGizmo; shared cut plane in `parts/materials.ts`
+- `src/components/charts/DynoChart.tsx` — dual-axis WHP/Nm graph with stock
+  baseline ghost, peak markers and a clickable RPM sweep cursor
 
 ## Asset pipeline
 
@@ -39,6 +45,16 @@ then the real model loads with zero code changes. Raw CAD (`.step/.stp/.stl.raw`
 is git-ignored; commit only optimized `.glb`.
 
 ## Simulation rules
+
+- **Torque-first dyno:** stock tune + factory turbo reproduces the lore ratings
+  within ±3% (torque from cylinder pressure, power derived — no fudge factors).
+  The boost slider locks to factory boost on the stock tune and takes effect
+  on Stage 1/2. Small turbos spool early and die up top; the K24 holds.
+- **Cutaway:** master toggle + axis (X along crank / Y deck height / Z bank side),
+  plane position slider, flip toggle, and an amber gizmo plane marking the cut.
+- **Animation:** play/pause + slow-motion crank speed; Sweep mode drives the
+  crank and the chart cursor through 800 rpm → redline together. Failed
+  engines seize (motion freezes).
 
 - **Rule A (torque spike):** 19T + boost >18psi + stock rods → `FAILED_BENT_RODS`
 - **Rule B (cracked sleeve):** 83mm bore + >350 WHP + stock sleeves → `FAILED_CRACKED_BLOCK`

@@ -51,6 +51,6 @@ export const animClock = new AnimClock();
 
 /** Reactive live rpm for the chart cursor + telemetry readout (~10 Hz). */
 export function useAnimRpm(): number {
-  useSyncExternalStore(animClock.subscribe, animClock.getVersion);
+  useSyncExternalStore(animClock.subscribe, animClock.getVersion, () => 0);
   return animClock.rpm;
 }
