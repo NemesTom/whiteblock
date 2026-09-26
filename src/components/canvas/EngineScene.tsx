@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Environment, ContactShadows } from '@react-three/drei';
+import { OrbitControls, Environment, Lightformer, ContactShadows } from '@react-three/drei';
 import { useCutPlane } from './parts/materials';
 import { BlockAssembly } from './parts/BlockAssembly';
 import { HeadAssembly } from './parts/HeadAssembly';
@@ -41,7 +41,13 @@ export function EngineScene() {
           <HeadAssembly plane={plane} />
           <TurboAssembly plane={plane} />
           <TransmissionAssembly />
-          <Environment preset="city" />
+          {/* Procedural studio lighting — zero network (replaces the CDN HDR preset). */}
+          <Environment resolution={256} frames={1}>
+            <Lightformer intensity={2.2} position={[0, 5, 0]} rotation-x={Math.PI / 2} scale={[10, 10, 1]} color="#ffffff" />
+            <Lightformer intensity={1.1} position={[-5, 1, -1]} rotation-y={Math.PI / 2} scale={[6, 2, 1]} color="#cfe8ff" />
+            <Lightformer intensity={1.1} position={[5, 1, 1]} rotation-y={-Math.PI / 2} scale={[6, 2, 1]} color="#ffe3c2" />
+            <Lightformer intensity={0.6} position={[0, 2, 6]} scale={[8, 3, 1]} color="#ffffff" />
+          </Environment>
         </Suspense>
         <CutGizmo />
         <ContactShadows position={[0, -0.45, 0]} opacity={0.55} scale={12} blur={2.4} />
