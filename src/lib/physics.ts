@@ -527,16 +527,16 @@ export function maxRpm(sel: Pick<EngineSelection, 'tuneId' | 'engineId'>): numbe
 
 /**
  * Turbo shaft load as a fraction of frame rating — demand-driven: boost
- * target vs. compressor capability, weighted by rpm^1.5 (flow energy) and
- * frame size (small wheels work harder for the same demand). A stock setup
- * cruises ≈ 0.5–0.7; past 1.0 the shaft bursts.
+ * target normalized by compressor capability, squared, times rpm energy
+ * squared. Stock-ish operation cruises ≈ 0.5–0.8; only maxed-out turbos
+ * near 8000 rpm blow past 1.0 (burst). Per-turbo maxBoost normalization
+ * already encodes frame capability, so no separate size factor is needed.
  */
 export function shaftSpeed(sel: EngineSelection, rpm: number): number {
   const spec = TURBO_AIR[sel.turboId];
   const demand = effectiveBoostTarget(sel) / spec.maxBoostPsi; // 0..1
-  const flow = Math.pow(Math.max(0, rpm) / 8000, 1.5);
-  const sizeF = Math.pow(260 / chokeWhp(sel), 1.5);
-  return TURBO_MAX_SHAFT[sel.turboId] * (0.3 + 2.0 * demand * demand * flow * sizeF);
+  const flow = Math.pow(Math.max(0, rpm) / 8000, 2);
+  return TURBO_MAX_SHAFT[sel.turboId] * (0.5 + 0.6 * demand * demand * flow);
 }
 
 /**
