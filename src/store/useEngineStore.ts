@@ -2,10 +2,8 @@ import { create } from 'zustand';
 import type { EngineSelection, EngineStatus } from '@/types/engine';
 import {
   BASE_ENGINES,
-  FUEL_MOD,
   ROD_LENGTH_MM,
   ROD_LIMIT_WHP,
-  TURBO_FLOW_WHP,
   displacementCc,
   dynoCurve,
   maxHorsepower,
@@ -35,7 +33,14 @@ const DEFAULTS: EngineSelection = {
   transCoolerId: 'none',
   boostPsi: 14,
   cutaway: false,
+  cutawayAxis: 'x',
+  cutawayOffset: 0.55,
+  cutawayFlip: false,
   focusedPart: null,
+  animPlaying: true,
+  animSpeed: 36,
+  sweepEnabled: false,
+  animRpm: 800,
 };
 
 export function evaluateFailure(sel: EngineSelection): { status: EngineStatus; message: string } {
@@ -72,8 +77,6 @@ export function evaluateFailure(sel: EngineSelection): { status: EngineStatus; m
   if (sel.turboId === 'k24' && sel.manifoldId !== 'japanifold-s60r') {
     return { status: 'OK', message: 'K24 choked on stock manifold — fit the S60R/Japanifold to unlock full flow.' };
   }
-  void TURBO_FLOW_WHP;
-  void FUEL_MOD;
   return { status: 'OK', message: 'Setup healthy. Send it.' };
 }
 
