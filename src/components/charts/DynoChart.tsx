@@ -141,6 +141,12 @@ export function DynoChart() {
         animRpm: 800,
         cycleHighlight: false,
         slowMo: false,
+        injectorId: 'stock-350',
+        fuelPumpId: 'stock-pump',
+        intercoolerId: 'stock-smic',
+        downpipeId: 'stock-25',
+        studsId: 'stock-bolts',
+        valveSpringsId: 'stock-springs',
       }),
     [cfg],
   );
@@ -171,6 +177,12 @@ export function DynoChart() {
       animRpm: 800,
       cycleHighlight: false,
       slowMo: false,
+      injectorId: 'stock-350',
+      fuelPumpId: 'stock-pump',
+      intercoolerId: 'stock-smic',
+      downpipeId: 'stock-25',
+      studsId: 'stock-bolts',
+      valveSpringsId: 'stock-springs',
     });
   }, [engineId]);
 
@@ -251,10 +263,10 @@ export function DynoChart() {
         <Metric label="Rod/Stroke" value={String(m.rodStrokeRatio)} />
         <Metric label="VE" value={`${m.volumetricEfficiency}%`} />
         <Metric label="Boost" value={`${effBoost.toFixed(1)} psi`} />
-        <Metric label="Engine speed" value={`${Math.round(liveRpm)} rpm`} />
         <Metric label="Peak wheel" value={`${m.maxHp} WHP @ ${m.peakHpRpm}`} highlight />
         <Metric label="Peak crank" value={`${m.maxCrankHp} hp @ ${m.peakCrankHpRpm}`} />
         <Metric label="Drivetrain loss" value={`${m.drivetrainLossPct}% · −${m.drivetrainLossHp} hp`} />
+        <Metric label="Injector duty" value={`${m.injectorDutyPct}%`} highlight={m.injectorDutyPct > 90} />
       </div>
       <div className="flex items-center gap-1.5 px-4 pb-1 pt-1">
         <span className="text-[10px] uppercase tracking-wide text-zinc-500">Lines:</span>

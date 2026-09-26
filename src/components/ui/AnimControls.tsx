@@ -23,12 +23,13 @@ export function AnimControls() {
   const engineId = useEngineStore((s) => s.engineId);
   const rodsId = useEngineStore((s) => s.rodsId);
   const headId = useEngineStore((s) => s.headId);
+  const valveSpringsId = useEngineStore((s) => s.valveSpringsId);
   const set = useEngineStore((s) => s.set);
   const rpm = useAnimRpm();
 
   const cap = maxRpm({ tuneId, engineId });
-  const { limit } = rpmLimit({ rodsId, headId });
-  const limited = cap < 8000;
+  const { limit } = rpmLimit({ rodsId, headId, valveSpringsId });
+  const limited = cap < 8500;
 
   const setRpm = (v: number) => {
     const clamped = Math.min(cap, Math.max(800, Math.round(v / 100) * 100));
@@ -53,15 +54,15 @@ export function AnimControls() {
           <input
             type="range"
             min={800}
-            max={8000}
+            max={cap}
             step={100}
-            value={Math.round(rpm / 100) * 100}
+            value={Math.min(Math.round(rpm / 100) * 100, cap)}
             disabled={sweep || failed}
             onChange={(e) => setRpm(Number(e.target.value))}
             className="w-36"
             aria-label="Engine RPM"
           />
-          <span className="font-mono text-zinc-500">{limited ? `LIMIT ${cap}` : '8000'}</span>
+          <span className="font-mono text-zinc-500">{limited ? `LIMIT ${cap}` : `${cap}`}</span>
         </label>
         <button
           onClick={() => set({ sweepEnabled: !sweep })}

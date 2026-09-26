@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { BASE_ENGINES, TURBO_MAX_SHAFT, maxHorsepower, shaftSpeed } from '@/lib/physics';
+import { BASE_ENGINES, TURBO_FLANGE, TURBO_MAX_SHAFT, TURBO_SCALE, maxHorsepower, shaftSpeed } from '@/lib/physics';
 import { useEngineStore } from '@/store/useEngineStore';
 import { animClock } from '@/lib/animClock';
 import { clip } from './materials';
@@ -30,18 +30,8 @@ export function TurboAssembly({ plane }: { plane: THREE.Plane }) {
   const deck = deckY(engineId, rodsId);
   const headBase = deck + 0.05;
   const hot = maxHp > 400 || maxHp === 0;
-  /** Frame size only — identical geometry, scaled per turbo. */
-  const TURBO_SCALE: Record<string, number> = {
-    'td04-13g': 0.9,
-    'td04-13t': 0.9,
-    'td04l-14t': 0.9,
-    'td04-15g': 1.0,
-    'td04-16t': 1.0,
-    'td04-18t': 1.1,
-    'td04-19t': 1.1,
-    k24: 1.15,
-  };
   const big = TURBO_SCALE[turboId] ?? 1;
+  const t3 = TURBO_FLANGE[turboId] === 't3';
 
   const shaftRef = useRef<THREE.Group>(null);
   const shaftVis = useRef(0); // 0..1 shaft load with spool inertia
@@ -186,6 +176,20 @@ export function TurboAssembly({ plane }: { plane: THREE.Plane }) {
           <mesh position={[turboX - 0.35, collectorY, collectorZ]} material={mats.runner}>
             <boxGeometry args={[0.06, 0.3, 0.3]} />
           </mesh>
+          {/* External wastegate + screamer (T3 big frames) */}
+          {t3 && (
+            <group position={[-0.5, collectorY + 0.15, collectorZ + 0.15]}>
+              <mesh rotation={[0.5, 0, -0.4]} material={mats.steel}>
+                <cylinderGeometry args={[0.055, 0.055, 0.16, 12]} />
+              </mesh>
+              <mesh position={[0.03, 0.12, 0.02]} material={mats.dark}>
+                <cylinderGeometry args={[0.02, 0.02, 0.1, 8]} />
+              </mesh>
+              <mesh position={[-0.12, -0.25, -0.05]} rotation={[0.3, 0, 0.35]} material={mats.dark}>
+                <cylinderGeometry args={[0.035, 0.04, 0.4, 10]} />
+              </mesh>
+            </group>
+          )}
         </group>
       </OptionalModel>
 

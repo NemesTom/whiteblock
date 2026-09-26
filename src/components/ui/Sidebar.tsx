@@ -92,6 +92,12 @@ export function Sidebar() {
       <Accordion title="Top End (Cylinder Head)">
         <OptionButton active={s.headId === 'stock-n'} label="Stock N-Head · VE 85% · revs to 7000" sub="Hydraulic lifters" onClick={() => pick({ headId: 'stock-n' }, 'head')} />
         <OptionButton active={s.headId === 'rn-swap'} label="RN-Head Swap · VE 95% · revs to 7800" sub="Solid lifters · powerband +500 RPM" onClick={() => pick({ headId: 'rn-swap' }, 'head')} />
+        <div className="mb-1 mt-2 text-xs font-semibold text-zinc-300">Head studs</div>
+        <OptionButton active={s.studsId === 'stock-bolts'} label="Stock TTY bolts" sub="Lift past 24 psi" onClick={() => pick({ studsId: 'stock-bolts' }, 'head')} />
+        <OptionButton active={s.studsId === 'arp-studs'} label="ARP head studs" sub="Holds 35+ psi" onClick={() => pick({ studsId: 'arp-studs' }, 'head')} />
+        <div className="mb-1 mt-2 text-xs font-semibold text-zinc-300">Valve springs</div>
+        <OptionButton active={s.valveSpringsId === 'stock-springs'} label="Stock springs" onClick={() => pick({ valveSpringsId: 'stock-springs' }, 'head')} />
+        <OptionButton active={s.valveSpringsId === 'supertech'} label="Supertech springs + retainers" sub="+400 rpm head room" onClick={() => pick({ valveSpringsId: 'supertech' }, 'head')} />
       </Accordion>
 
       <Accordion title="Turbocharger & Exhaust" defaultOpen>
@@ -104,14 +110,21 @@ export function Sidebar() {
             ['td04-16t', 'TD04HL-16T · linear · max 300 WHP'],
             ['td04-18t', 'TD04HL-18T · V70R 98–99 · violent spike · bends stock rods'],
             ['td04-19t', 'TD04HL-19T · 2000 R / T5 upgrade · violent spike · bends stock rods'],
+            ['td04-20t', 'TD04HL-20T · max stock-frame · 330 WHP · needs forged + fuel'],
+            ['hx35', 'Holset HX35 · budget legend · 450 WHP · needs T3 manifold + pack'],
+            ['gt3071r', 'Garrett GT3071R · ball bearing · 420 WHP · needs T3 + pack'],
+            ['efr7163', 'BorgWarner EFR 7163 · fast spool · 500 WHP · needs T3 + pack'],
+            ['gtx3076r', 'Garrett GTX3076R · 550 WHP · needs T3 + full pack'],
+            ['pte6262', 'Precision 6262 · drag class · 600 WHP · needs everything'],
             ['k24', 'KKK K24 (S60R) · max 350 WHP · needs Japanifold'],
           ] as const
         ).map(([id, label]) => (
           <OptionButton key={id} active={s.turboId === id} label={label} onClick={() => pick({ turboId: id }, 'turbo')} />
         ))}
         <div className="mt-2 text-xs font-semibold text-zinc-300">Exhaust Manifold</div>
-        <OptionButton active={s.manifoldId === 'stock'} label="Stock manifold" onClick={() => pick({ manifoldId: 'stock' }, 'turbo')} />
-        <OptionButton active={s.manifoldId === 'japanifold-s60r'} label="S60R / Japanifold" sub="Unlocks K24 full flow" onClick={() => pick({ manifoldId: 'japanifold-s60r' }, 'turbo')} />
+        <OptionButton active={s.manifoldId === 'stock'} label="Stock manifold" sub="TD04 flange" onClick={() => pick({ manifoldId: 'stock' }, 'turbo')} />
+        <OptionButton active={s.manifoldId === 'japanifold-s60r'} label="S60R / Japanifold" sub="Unlocks K24 full flow · TD04 flange" onClick={() => pick({ manifoldId: 'japanifold-s60r' }, 'turbo')} />
+        <OptionButton active={s.manifoldId === 'tubular-t3'} label="Tubular T3 manifold" sub="Required for HX35 / Garrett / EFR / Precision" onClick={() => pick({ manifoldId: 'tubular-t3' }, 'turbo')} />
         <label className="mt-3 block text-xs text-zinc-300">
           Boost:{' '}
           <span className="font-bold text-sky-300">
@@ -122,9 +135,9 @@ export function Sidebar() {
           <input
             type="range"
             min={8}
-            max={26}
+            max={s.tuneId === 'stage3' ? 35 : 26}
             step={1}
-            value={s.boostPsi}
+            value={Math.min(s.boostPsi, s.tuneId === 'stage3' ? 35 : 26)}
             onChange={(e) => s.set({ boostPsi: Number(e.target.value) })}
             className="mt-1 w-full"
             title="Takes effect on Stage 1 / Stage 2"
@@ -134,6 +147,7 @@ export function Sidebar() {
 
       <Accordion title="Transmission">
         <OptionButton active={s.transmissionId === 'm56'} label="M56 5-spd manual · bulletproof · eats ~12%" sub="Limit 500 WHP w/ Spec Stage 3" onClick={() => pick({ transmissionId: 'm56' }, 'transmission')} />
+        <OptionButton active={s.transmissionId === 'm66'} label="M66 6-spd swap · eats ~13%" sub="Limit 700 WHP w/ Spec Stage 3" onClick={() => pick({ transmissionId: 'm66' }, 'transmission')} />
         <OptionButton active={s.transmissionId === 'aw55'} label="AW55-50SN 5-spd auto · eats ~15%" sub="Fails >320 WHP w/o cooler" onClick={() => pick({ transmissionId: 'aw55' }, 'transmission')} />
         <OptionButton active={s.transmissionId === 'gm-4t65e'} label="GM 4T65-E (T6 stock) · eats ~17%" sub="Glass cannon on Stage 2" onClick={() => pick({ transmissionId: 'gm-4t65e' }, 'transmission')} />
         <div className="mt-2 text-xs font-semibold text-zinc-300">Clutch / Cooler</div>
@@ -143,10 +157,59 @@ export function Sidebar() {
         <OptionButton active={s.transCoolerId === 'external'} label="External trans cooler" onClick={() => s.set({ transCoolerId: 'external' })} />
       </Accordion>
 
+      <Accordion title="Fuel System">
+        <div className="mb-1 text-xs font-semibold text-zinc-300">Injectors</div>
+        {(
+          [
+            ['stock-350', 'Stock injectors · ~280 hp fuel'],
+            ['green-440', 'Green giants 440cc · ~350 hp'],
+            ['deka-630', 'Siemens Deka 630cc · ~500 hp'],
+            ['ev14-1000', 'Bosch EV14 1000cc · ~800 hp'],
+            ['ev14-1700', 'Bosch EV14 1700cc · ~1350 hp'],
+          ] as const
+        ).map(([id, label]) => (
+          <OptionButton key={id} active={s.injectorId === id} label={label} onClick={() => pick({ injectorId: id }, 'ecu')} />
+        ))}
+        <div className="mb-1 mt-2 text-xs font-semibold text-zinc-300">Fuel pump</div>
+        {(
+          [
+            ['stock-pump', 'Stock pump · ~330 hp'],
+            ['walbro-255', 'Walbro 255 lph · ~550 hp'],
+            ['walbro-450', 'Walbro 450 lph · ~800 hp'],
+          ] as const
+        ).map(([id, label]) => (
+          <OptionButton key={id} active={s.fuelPumpId === id} label={label} onClick={() => pick({ fuelPumpId: id }, 'ecu')} />
+        ))}
+      </Accordion>
+
+      <Accordion title="Breathing">
+        <div className="mb-1 text-xs font-semibold text-zinc-300">Intercooler</div>
+        {(
+          [
+            ['stock-smic', 'Stock SMIC · heat-soaks past 300 WHP'],
+            ['do88-fmic', 'do88 FMIC · holds to 350 WHP'],
+            ['race-fmic', 'Race FMIC · no heat soak'],
+          ] as const
+        ).map(([id, label]) => (
+          <OptionButton key={id} active={s.intercoolerId === id} label={label} onClick={() => pick({ intercoolerId: id }, 'turbo')} />
+        ))}
+        <div className="mb-1 mt-2 text-xs font-semibold text-zinc-300">Downpipe / exhaust</div>
+        {(
+          [
+            ['stock-25', 'Stock 2.5" exhaust'],
+            ['dp-3', '3" downpipe · +3% · spools ~100 rpm sooner'],
+            ['full-3', 'Full 3" exhaust · +5% · spools ~200 rpm sooner'],
+          ] as const
+        ).map(([id, label]) => (
+          <OptionButton key={id} active={s.downpipeId === id} label={label} onClick={() => pick({ downpipeId: id }, 'turbo')} />
+        ))}
+      </Accordion>
+
       <Accordion title="ECU & Tune">
-        <OptionButton active={s.tuneId === 'stock'} label="Stock tune · fuel mod 0.85" onClick={() => pick({ tuneId: 'stock' }, 'ecu')} />
-        <OptionButton active={s.tuneId === 'stage1'} label="Stage 1 · fuel mod 1.0" onClick={() => pick({ tuneId: 'stage1' }, 'ecu')} />
-        <OptionButton active={s.tuneId === 'stage2'} label="Stage 2 · fuel mod 1.08" onClick={() => pick({ tuneId: 'stage2' }, 'ecu')} />
+        <OptionButton active={s.tuneId === 'stock'} label="Stock tune · factory boost" onClick={() => pick({ tuneId: 'stock' }, 'ecu')} />
+        <OptionButton active={s.tuneId === 'stage1'} label="Stage 1 · +6% timing" onClick={() => pick({ tuneId: 'stage1' }, 'ecu')} />
+        <OptionButton active={s.tuneId === 'stage2'} label="Stage 2 · +12% · limiter 8000" onClick={() => pick({ tuneId: 'stage2' }, 'ecu')} />
+        <OptionButton active={s.tuneId === 'stage3'} label="Stage 3 MaxxECU standalone" sub="+18% · 35 psi · limiter 8500 · needs EV14-1000+ & 450 pump" onClick={() => pick({ tuneId: 'stage3' }, 'ecu')} />
       </Accordion>
     </aside>
   );
