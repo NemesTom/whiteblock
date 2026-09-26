@@ -13,6 +13,7 @@ import {
   Tooltip,
   type Chart as ChartType,
   type ChartEvent,
+  type Plugin,
 } from 'chart.js';
 import { useEngineStore, selectMetrics } from '@/store/useEngineStore';
 import { animClock, useAnimRpm } from '@/lib/animClock';
@@ -33,13 +34,11 @@ const cursorRef: {
   peakTq: null,
 };
 
-const dynoOverlay = {
+const dynoOverlay: Plugin<'line'> = {
   id: 'dynoOverlay',
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  afterDatasetsDraw(chart: any) {
-    const { ctx, scales } = chart as { ctx: CanvasRenderingContext2D; scales: Record<string, { getPixelForValue(v: number): number }> };
+  afterDatasetsDraw(chart) {
+    const { ctx, scales, chartArea: area } = chart;
     const x = scales.x;
-    const area = chart.chartArea;
     if (!x || !area) return;
     // Factory redline / limiter marker
     const rx = x.getPixelForValue(cursorRef.redline);

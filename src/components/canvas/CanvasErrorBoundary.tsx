@@ -32,7 +32,9 @@ export class CanvasErrorBoundary extends Component<Props, State> {
       return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-zinc-900 p-6 text-center text-zinc-200">
           <div className="text-sm font-bold">3D view crashed</div>
-          <div className="max-w-md font-mono text-[11px] text-zinc-400">{this.state.error.message}</div>
+          <div className="max-w-md text-[11px] text-zinc-400">
+            Something went wrong rendering the scene. Your build is safe — try resetting the view.
+          </div>
           <button
             onClick={() => {
               this.setState({ error: null });
