@@ -80,15 +80,16 @@ export function evaluateFailure(sel: EngineSelection): { status: EngineStatus; m
     return { status: 'SETUP_INCOMPATIBLE', message: 'Stage 3 standalone needs EV14-1000cc+ injectors and a Walbro 450 pump. The stock ECU fuel model cannot feed this.' };
   }
 
-  // Rule A — the torque spike: big-wheel HL turbo (18T/19T) + >18psi
+  // Rule A — the torque spike: big-wheel HL turbo (18T/19T/21H) + >18psi
   // of EFFECTIVE boost + stock rods => bent rods. Uses the locked target,
   // so a parked slider on the stock tune can't bend rods at 9.5 psi.
   if (
-    (sel.turboId === 'td04-18t' || sel.turboId === 'td04-19t') &&
+    (sel.turboId === 'td04-18t' || sel.turboId === 'td04-19t' || sel.turboId === 'td04-21h') &&
     effectiveBoostTarget(sel) > 18 &&
     (sel.rodsId === 'stock-n' || sel.rodsId === 'stock-rn')
   ) {
-    return { status: 'FAILED_BENT_RODS', message: `Violent ${sel.turboId === 'td04-18t' ? '18T' : '19T'} torque spike bent the stock rods. Dyno output dropped to zero.` };
+    const name = sel.turboId === 'td04-18t' ? '18T' : sel.turboId === 'td04-21h' ? '21H' : '19T';
+    return { status: 'FAILED_BENT_RODS', message: `Violent ${name} torque spike bent the stock rods. Dyno output dropped to zero.` };
   }
   // Stock N-rods limit: 15G-class turbo pushing past 300 WHP at low rpm
   if (hp > ROD_LIMIT_WHP[sel.rodsId]) {

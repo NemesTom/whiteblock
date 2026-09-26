@@ -225,6 +225,8 @@ export function Sidebar() {
             ['td04-18t', 'TD04HL-18T · V70R 98–99 · violent spike · bends stock rods'],
             ['td04-19t', 'TD04HL-19T · 2000 R / T5 upgrade · violent spike · bends stock rods'],
             ['td04-20t', 'TD04HL-20T · max stock-frame · 330 WHP · needs forged + fuel'],
+            ['td04-21h', 'Kinugawa TD04HL-21H · 330–400 HP crank · biggest bolt-on'],
+            ['td06sl2-20g', 'Kinugawa TD06SL2-20G · documented B5234T build · ~380 WHP · T3 + pack'],
             ['hx35', 'Holset HX35 · budget legend · 450 WHP · needs T3 manifold + pack'],
             ['gt3071r', 'Garrett GT3071R · ball bearing · 420 WHP · needs T3 + pack'],
             ['efr7163', 'BorgWarner EFR 7163 · fast spool · 500 WHP · needs T3 + pack'],
