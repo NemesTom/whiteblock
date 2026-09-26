@@ -34,7 +34,12 @@ jobs:
           cache: npm
 
       - name: Set up Pages
-        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b
+        # Pinned by SHA (configure-pages v6, Node 24 runtime); bump with Dependabot.
+        # enablement:true turns Pages on via API on first run, so no manual
+        # Settings click is required (needs pages:write, granted above).
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d
+        with:
+          enablement: true
 
       - name: Install and export static site
         env:
