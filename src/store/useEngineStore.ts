@@ -75,10 +75,9 @@ export function evaluateFailure(sel: EngineSelection): { status: EngineStatus; m
   if (isBigFrame(sel.turboId) && (sel.intercoolerId !== 'race-fmic' && sel.intercoolerId !== BIG_FRAME_MIN.intercooler || sel.downpipeId === 'stock-25')) {
     return { status: 'SETUP_INCOMPATIBLE', message: `A ${sel.turboId} on a stock intercooler/exhaust is a heat-soaked time bomb. Fit at least a do88 FMIC and a 3" downpipe.` };
   }
-  // Stage 3 (standalone) demands big fuel: EV14-1000+ and a 450 pump.
-  if (sel.tuneId === 'stage3' && (sel.injectorId !== 'ev14-1000' && sel.injectorId !== 'ev14-1700' || sel.fuelPumpId !== 'walbro-450')) {
-    return { status: 'SETUP_INCOMPATIBLE', message: 'Stage 3 standalone needs EV14-1000cc+ injectors and a Walbro 450 pump. The stock ECU fuel model cannot feed this.' };
-  }
+  // Stage 3 (standalone MaxxECU) imposes no fitment requirements itself —
+  // it only unlocks boost, timing and revs. Starving it still melts
+  // pistons through the lean rule below, which is the honest consequence.
 
   // Rule A — the torque spike: big-wheel HL turbo (18T/19T/21H) + >18psi
   // of EFFECTIVE boost + stock rods => bent rods. Uses the locked target,

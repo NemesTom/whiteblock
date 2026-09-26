@@ -116,6 +116,12 @@ export function DynoChart() {
   const clutchId = useEngineStore((s) => s.clutchId);
   const transCoolerId = useEngineStore((s) => s.transCoolerId);
   const converterId = useEngineStore((s) => s.converterId);
+  const injectorId = useEngineStore((s) => s.injectorId);
+  const fuelPumpId = useEngineStore((s) => s.fuelPumpId);
+  const intercoolerId = useEngineStore((s) => s.intercoolerId);
+  const downpipeId = useEngineStore((s) => s.downpipeId);
+  const studsId = useEngineStore((s) => s.studsId);
+  const valveSpringsId = useEngineStore((s) => s.valveSpringsId);
   const boostPsi = useEngineStore((s) => s.boostPsi);
   const set = useEngineStore((s) => s.set);
   const liveRpm = useAnimRpm();
@@ -124,8 +130,8 @@ export function DynoChart() {
   const toggleLine = (key: string) => setHidden((h) => ({ ...h, [key]: !h[key] }));
 
   const cfg = useMemo(
-    () => ({ engineId, rodsId, headId, turboId, manifoldId, transmissionId, sleevesId, tuneId, clutchId, transCoolerId, converterId, boostPsi }),
-    [engineId, rodsId, headId, turboId, manifoldId, transmissionId, sleevesId, tuneId, clutchId, transCoolerId, converterId, boostPsi],
+    () => ({ engineId, rodsId, headId, turboId, manifoldId, transmissionId, sleevesId, tuneId, clutchId, transCoolerId, converterId, injectorId, fuelPumpId, intercoolerId, downpipeId, studsId, valveSpringsId, boostPsi }),
+    [engineId, rodsId, headId, turboId, manifoldId, transmissionId, sleevesId, tuneId, clutchId, transCoolerId, converterId, injectorId, fuelPumpId, intercoolerId, downpipeId, studsId, valveSpringsId, boostPsi],
   );
 
   const m = useMemo(
@@ -142,12 +148,6 @@ export function DynoChart() {
         animRpm: 800,
         cycleHighlight: false,
         slowMo: false,
-        injectorId: 'stock-350',
-        fuelPumpId: 'stock-pump',
-        intercoolerId: 'stock-smic',
-        downpipeId: 'stock-25',
-        studsId: 'stock-bolts',
-        valveSpringsId: 'stock-springs',
       }),
     [cfg],
   );
