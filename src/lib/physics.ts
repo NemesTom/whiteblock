@@ -1,9 +1,13 @@
 import type {
   BaseEngineSpec,
+  DownpipeId,
   DynoPoint,
   EngineId,
   EngineSelection,
+  FuelPumpId,
   HeadId,
+  InjectorId,
+  IntercoolerId,
   RodsId,
   TransmissionId,
   TurboId,
@@ -165,7 +169,49 @@ export const TURBO_AIR: Record<TurboId, TurboAirSpec> = {
   'td04-16t': { spoolStartRpm: 1400, fullBoostRpm: 2300, maxBoostPsi: 20, topEndDropPsi: 6.5, chokeWhp: 300 },
   'td04-18t': { spoolStartRpm: 1450, fullBoostRpm: 2350, maxBoostPsi: 22, topEndDropPsi: 5.5, chokeWhp: 320 },
   'td04-19t': { spoolStartRpm: 1500, fullBoostRpm: 2400, maxBoostPsi: 24, topEndDropPsi: 6.5, chokeWhp: 340 },
+  'td04-20t': { spoolStartRpm: 1600, fullBoostRpm: 2500, maxBoostPsi: 26, topEndDropPsi: 6.0, chokeWhp: 330 },
+  hx35: { spoolStartRpm: 2600, fullBoostRpm: 3500, maxBoostPsi: 32, topEndDropPsi: 3.0, chokeWhp: 450 },
+  gt3071r: { spoolStartRpm: 2400, fullBoostRpm: 3600, maxBoostPsi: 30, topEndDropPsi: 2.5, chokeWhp: 420 },
+  efr7163: { spoolStartRpm: 2200, fullBoostRpm: 3400, maxBoostPsi: 32, topEndDropPsi: 2.0, chokeWhp: 500 },
+  gtx3076r: { spoolStartRpm: 2600, fullBoostRpm: 4000, maxBoostPsi: 34, topEndDropPsi: 2.0, chokeWhp: 550 },
+  pte6262: { spoolStartRpm: 2800, fullBoostRpm: 4200, maxBoostPsi: 35, topEndDropPsi: 2.0, chokeWhp: 600 },
   k24: { spoolStartRpm: 1400, fullBoostRpm: 2300, maxBoostPsi: 24, topEndDropPsi: 4.5, chokeWhp: 350 },
+};
+
+/** Exhaust flange family: big frames need a tubular T3 manifold. */
+export const TURBO_FLANGE: Record<TurboId, 'td04' | 't3'> = {
+  'td04-13g': 'td04',
+  'td04-13t': 'td04',
+  'td04l-14t': 'td04',
+  'td04-15g': 'td04',
+  'td04-16t': 'td04',
+  'td04-18t': 'td04',
+  'td04-19t': 'td04',
+  'td04-20t': 'td04',
+  hx35: 't3',
+  gt3071r: 't3',
+  efr7163: 't3',
+  gtx3076r: 't3',
+  pte6262: 't3',
+  k24: 'td04',
+};
+
+/** Visual frame size (geometry identical, scaled). */
+export const TURBO_SCALE: Record<TurboId, number> = {
+  'td04-13g': 0.9,
+  'td04-13t': 0.9,
+  'td04l-14t': 0.9,
+  'td04-15g': 1.0,
+  'td04-16t': 1.0,
+  'td04-18t': 1.1,
+  'td04-19t': 1.1,
+  'td04-20t': 1.12,
+  hx35: 1.35,
+  gt3071r: 1.3,
+  efr7163: 1.32,
+  gtx3076r: 1.38,
+  pte6262: 1.45,
+  k24: 1.15,
 };
 
 /** Factory-fit turbo per engine — the dyno anchor baseline. */
@@ -197,11 +243,79 @@ export const TUNE_TIMING_GAIN: Record<TuneId, number> = {
   stock: 1.0,
   stage1: 1.06,
   stage2: 1.12,
+  stage3: 1.18,
 };
+
+/** Injector flow (cc/min). Crank-hp capacity at 80% duty, BSFC 0.60. */
+export const INJECTOR_CC: Record<InjectorId, number> = {
+  'stock-350': 350,
+  'green-440': 440,
+  'deka-630': 630,
+  'ev14-1000': 1000,
+  'ev14-1700': 1700,
+};
+
+/** Factory injector size: R/T6/T5 cars left the line with bigger injectors. */
+export const ENGINE_STOCK_INJECTOR_CC: Record<EngineId, number> = {
+  B5234T3: 350,
+  B5244T3: 350,
+  B5244T5: 440,
+  B5254T2: 350,
+  B5254T4: 465,
+  B4194T: 350,
+  B6284T: 440,
+  B6294T: 440,
+};
+
+/** Crank-hp capacity of the injector set. */
+export function injectorCapHp(sel: Pick<EngineSelection, 'injectorId' | 'engineId'>): number {
+  const cyl = BASE_ENGINES[sel.engineId].cylinders;
+  const cc = sel.injectorId === 'stock-350' ? ENGINE_STOCK_INJECTOR_CC[sel.engineId] : INJECTOR_CC[sel.injectorId];
+  return ((cc * 0.8) / 5.0) * cyl;
+}
+
+/** Fuel pump crank-hp capacity (pump gas). */
+export const FUEL_PUMP_CAP_HP: Record<FuelPumpId, number> = {
+  'stock-pump': 330,
+  'walbro-255': 550,
+  'walbro-450': 800,
+};
+
+/** Intercooler heat-soak: power lost past the threshold. */
+export const INTERCOOLER: Record<IntercoolerId, { thresholdWhp: number; lossFrac: number }> = {
+  'stock-smic': { thresholdWhp: 300, lossFrac: 0.06 },
+  'do88-fmic': { thresholdWhp: 350, lossFrac: 0.02 },
+  'race-fmic': { thresholdWhp: 1e9, lossFrac: 0 },
+};
+
+/** Exhaust backpressure relief: power gain + earlier spool. */
+export const DOWNPIPE: Record<DownpipeId, { powerMult: number; spoolDeltaRpm: number }> = {
+  'stock-25': { powerMult: 1.0, spoolDeltaRpm: 0 },
+  'dp-3': { powerMult: 1.03, spoolDeltaRpm: -100 },
+  'full-3': { powerMult: 1.05, spoolDeltaRpm: -200 },
+};
+
+/** Big T3 frames demand a minimum support pack. */
+export const BIG_FRAME_MIN = {
+  intercooler: 'do88-fmic' as IntercoolerId,
+  downpipe: 'dp-3' as DownpipeId,
+};
+
+export function isBigFrame(turboId: TurboId): boolean {
+  return TURBO_FLANGE[turboId] === 't3';
+}
+
+/** Turbo air spec with the downpipe spool improvement applied. */
+export function adjustedSpec(sel: EngineSelection): TurboAirSpec {
+  const spec = TURBO_AIR[sel.turboId];
+  const d = DOWNPIPE[sel.downpipeId].spoolDeltaRpm;
+  return { ...spec, spoolStartRpm: spec.spoolStartRpm + d, fullBoostRpm: spec.fullBoostRpm + d };
+}
 
 /** FWD drivetrain efficiency per gearbox (manual ~12%, slushbox ~15-17%). */
 export const TRANS_EFF: Record<TransmissionId, number> = {
   m56: 0.88,
+  m66: 0.87,
   aw55: 0.85,
   'gm-4t65e': 0.83,
 };
@@ -337,16 +451,18 @@ export function calibrationK(engine: BaseEngineSpec): number {
 
 /**
  * Crank torque (Nm) at an rpm point — the core of the model.
- *   TQ = k · disp_L · (VE/100) · PR(boost) · timingGain
+ *   TQ = k · disp_L · (VE/100) · PR(boost) · timingGain · exhaustMult
  * Torque comes from cylinder pressure; power is derived from it.
+ * The downpipe spool improvement is baked into the air spec.
  */
 export function torqueCrankNm(sel: EngineSelection, rpm: number): number {
   const engine = BASE_ENGINES[sel.engineId];
   const k = calibrationK(engine);
   const dispL = displacementCc(engine.boreMm, engine.strokeMm, engine.cylinders) / 1000;
   const ve = veAtRpm(rpm, sel.headId, engine.baseTqRpm) / 100;
-  const boost = boostAtRpm(rpm, effectiveBoostTarget(sel), TURBO_AIR[sel.turboId], engine.redlineRpm);
-  return k * dispL * ve * pressureRatio(boost) * TUNE_TIMING_GAIN[sel.tuneId];
+  const spec = adjustedSpec(sel);
+  const boost = boostAtRpm(rpm, effectiveBoostTarget(sel), spec, engine.redlineRpm);
+  return k * dispL * ve * pressureRatio(boost) * TUNE_TIMING_GAIN[sel.tuneId] * DOWNPIPE[sel.downpipeId].powerMult;
 }
 
 /** Turbo flow choke (WHP). The K24 stays choked without the Japanifold. */
@@ -375,6 +491,12 @@ export const TURBO_MAX_SHAFT: Record<TurboId, number> = {
   'td04-16t': 185000,
   'td04-18t': 180000,
   'td04-19t': 180000,
+  'td04-20t': 175000,
+  hx35: 150000,
+  gt3071r: 160000,
+  efr7163: 140000,
+  gtx3076r: 135000,
+  pte6262: 125000,
   k24: 170000,
 };
 
@@ -384,19 +506,22 @@ export interface RpmLimit {
 }
 
 /** Weakest link of the rotating assembly / valvetrain / oiling. */
-export function rpmLimit(sel: Pick<EngineSelection, 'rodsId' | 'headId'>): RpmLimit {
+export function rpmLimit(sel: Pick<EngineSelection, 'rodsId' | 'headId' | 'valveSpringsId'>): RpmLimit {
+  const springBonus = sel.valveSpringsId === 'supertech' ? 400 : 0;
   const candidates: RpmLimit[] = [
     { limit: ROD_RPM_LIMIT[sel.rodsId], culprit: 'rods' },
-    { limit: HEAD_RPM_LIMIT[sel.headId], culprit: 'head' },
+    { limit: HEAD_RPM_LIMIT[sel.headId] + springBonus, culprit: 'head' },
     { limit: sel.rodsId === 'forged-h' ? OIL_PUMP_RPM_LIMIT_FORGED : OIL_PUMP_RPM_LIMIT, culprit: 'pump' },
   ];
   return candidates.reduce((a, b) => (b.limit < a.limit ? b : a));
 }
 
 /**
- * Rev limiter: factory redline on stock/Stage 1, raised to 8000 on Stage 2.
+ * Rev limiter: factory redline on stock/Stage 1, 8000 on Stage 2,
+ * 8500 on Stage 3 (standalone).
  */
 export function maxRpm(sel: Pick<EngineSelection, 'tuneId' | 'engineId'>): number {
+  if (sel.tuneId === 'stage3') return 8500;
   return sel.tuneId === 'stage2' ? 8000 : BASE_ENGINES[sel.engineId].redlineRpm;
 }
 
@@ -415,32 +540,48 @@ export function shaftSpeed(sel: EngineSelection, rpm: number): number {
 }
 
 /**
- * Full dyno sweep, idle → 8000 rpm (past the factory redline so overrev
+ * Full dyno sweep, idle → 8500 rpm (past the factory redline so overrev
  * fall-off is visible; the rev limiter is enforced by the UI, not the curve).
  * Wheel torque = crank torque × drivetrain efficiency;
- * WHP = TQ(lb-ft) · rpm / 5252, clamped by the compressor choke.
+ * WHP = TQ(lb-ft) · rpm / 5252, clamped by the compressor choke, then
+ * heat-soaked by the intercooler past its threshold.
  * Crank HP is the same figure before drivetrain loss (display only).
  */
 export function dynoCurve(sel: EngineSelection): DynoPoint[] {
   const engine = BASE_ENGINES[sel.engineId];
   const eff = TRANS_EFF[sel.transmissionId];
   const choke = chokeWhp(sel);
+  const ic = INTERCOOLER[sel.intercoolerId];
+  const spec = adjustedSpec(sel);
   const pts: DynoPoint[] = [];
-  for (let rpm = 800; rpm <= 8000; rpm += 200) {
+  for (let rpm = 800; rpm <= 8500; rpm += 200) {
     const tqCrank = torqueCrankNm(sel, rpm);
     const tqWheel = tqCrank * eff;
-    const boost = boostAtRpm(rpm, effectiveBoostTarget(sel), TURBO_AIR[sel.turboId], engine.redlineRpm);
-    const hp = Math.min(choke, ((tqWheel / 1.35581795) * rpm) / 5252);
-    const hpCrank = Math.min(choke / eff, ((tqCrank / 1.35581795) * rpm) / 5252);
+    const boost = boostAtRpm(rpm, effectiveBoostTarget(sel), spec, engine.redlineRpm);
+    const rawHp = Math.min(choke, ((tqWheel / 1.35581795) * rpm) / 5252);
+    const rawCrank = Math.min(choke / eff, ((tqCrank / 1.35581795) * rpm) / 5252);
+    const icMult = rawHp > ic.thresholdWhp ? 1 - ic.lossFrac : 1;
     pts.push({
       rpm,
-      hp: Math.round(Math.max(0, hp)),
-      hpCrank: Math.round(Math.max(0, hpCrank)),
-      tqNm: Math.round(Math.max(0, tqWheel)),
+      hp: Math.round(Math.max(0, rawHp * icMult)),
+      hpCrank: Math.round(Math.max(0, rawCrank * icMult)),
+      tqNm: Math.round(Math.max(0, tqWheel * icMult)),
       boostPsi: Math.round(boost * 10) / 10,
     });
   }
   return pts;
+}
+
+/** Peak crank-hp fuel demand (what the injectors + pump must feed). */
+export function fuelDemandHp(sel: EngineSelection): number {
+  return dynoCurve(sel).reduce((a, b) => (b.hpCrank > a.hpCrank ? b : a), { hpCrank: 0 } as DynoPoint).hpCrank;
+}
+
+/** Injector duty (fraction) at peak demand vs. the weaker fuel link. */
+export function injectorDuty(sel: EngineSelection): number {
+  const demand = fuelDemandHp(sel);
+  const cap = Math.min(injectorCapHp(sel), FUEL_PUMP_CAP_HP[sel.fuelPumpId]);
+  return demand / (cap / 0.8);
 }
 
 /** Peak wheel horsepower of the sweep. */
