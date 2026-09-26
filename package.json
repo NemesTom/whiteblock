@@ -1,0 +1,36 @@
+{
+  "name": "volvo_visualizer",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 8099",
+    "build": "next build",
+    "start": "next start -p 8099",
+    "lint": "eslint",
+    "build:package": "next build && mkdir -p builds && tar -czf builds/whiteblock-build-$(date +%Y%m%d%H%M%S).tar.gz .next public package.json"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.1",
+    "@types/three": "^0.186.0",
+    "chart.js": "^4.5.1",
+    "gsap": "^3.15.0",
+    "lucide-react": "^1.48.0",
+    "next": "16.3.6",
+    "react": "19.2.8",
+    "react-chartjs-2": "^5.3.1",
+    "react-dom": "19.2.8",
+    "three": "^0.186.1",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.6",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
