@@ -43,6 +43,7 @@ const DEFAULTS: EngineSelection = {
   tuneId: 'stock',
   clutchId: 'stock',
   transCoolerId: 'none',
+  converterId: 'stock-converter',
   injectorId: 'stock-350',
   fuelPumpId: 'stock-pump',
   intercoolerId: 'stock-smic',
@@ -80,10 +81,11 @@ export function evaluateFailure(sel: EngineSelection): { status: EngineStatus; m
   }
 
   // Rule A — the torque spike: big-wheel HL turbo (18T/19T) + >18psi
-  // + stock rods => bent rods
+  // of EFFECTIVE boost + stock rods => bent rods. Uses the locked target,
+  // so a parked slider on the stock tune can't bend rods at 9.5 psi.
   if (
     (sel.turboId === 'td04-18t' || sel.turboId === 'td04-19t') &&
-    sel.boostPsi > 18 &&
+    effectiveBoostTarget(sel) > 18 &&
     (sel.rodsId === 'stock-n' || sel.rodsId === 'stock-rn')
   ) {
     return { status: 'FAILED_BENT_RODS', message: `Violent ${sel.turboId === 'td04-18t' ? '18T' : '19T'} torque spike bent the stock rods. Dyno output dropped to zero.` };
@@ -102,9 +104,15 @@ export function evaluateFailure(sel: EngineSelection): { status: EngineStatus; m
   if ((sel.engineId === 'B6284T' || sel.engineId === 'B6294T') && sel.transmissionId === 'gm-4t65e' && sel.tuneId === 'stage2') {
     return { status: 'FAILED_EXPLODED_GEARBOX', message: 'Stage 2 T6 torque exploded the stock transverse GM 4T65-E gearbox.' };
   }
-  // AW55 auto limit without cooler
+  // AW55 auto ladder: 320 stock, 380 with cooler, 420 with cooler + high-stall
   if (sel.transmissionId === 'aw55' && hp > 320 && sel.transCoolerId !== 'external') {
     return { status: 'FAILED_OVERWHELMED_TRANS', message: 'AW55-50SN overheated past 320 WHP without an external trans cooler.' };
+  }
+  if (sel.transmissionId === 'aw55' && hp > 380 && sel.converterId !== 'high-stall') {
+    return { status: 'FAILED_OVERWHELMED_TRANS', message: `AW55 clutch packs gave up at ${hp} WHP. A high-stall converter holds this box to 420.` };
+  }
+  if (sel.transmissionId === 'aw55' && hp > 420) {
+    return { status: 'FAILED_OVERWHELMED_TRANS', message: `AW55 held to 420 WHP with cooler and high-stall — past that the case is done. This needs a manual swap.` };
   }
   // M56/M66 manual with stock clutch past ~400 WHP
   if ((sel.transmissionId === 'm56' || sel.transmissionId === 'm66') && hp > 400 && sel.clutchId !== 'spec-stage3') {
