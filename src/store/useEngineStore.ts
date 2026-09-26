@@ -4,10 +4,13 @@ import {
   BASE_ENGINES,
   ROD_LENGTH_MM,
   ROD_LIMIT_WHP,
+  TURBO_MAX_SHAFT,
   displacementCc,
   dynoCurve,
   maxHorsepower,
   rodStrokeRatio,
+  rpmLimit,
+  shaftSpeed,
   volumetricEfficiency,
 } from '@/lib/physics';
 
@@ -38,9 +41,9 @@ const DEFAULTS: EngineSelection = {
   cutawayFlip: false,
   focusedPart: null,
   animPlaying: true,
-  animSpeed: 36,
   sweepEnabled: false,
   animRpm: 800,
+  cycleHighlight: false,
 };
 
 export function evaluateFailure(sel: EngineSelection): { status: EngineStatus; message: string } {
@@ -77,6 +80,22 @@ export function evaluateFailure(sel: EngineSelection): { status: EngineStatus; m
   // M56 manual with stock clutch past ~400 WHP
   if (sel.transmissionId === 'm56' && hp > 400 && sel.clutchId !== 'spec-stage3') {
     return { status: 'FAILED_OVERWHELMED_TRANS', message: 'M56 survived, but the stock clutch slips past 400 WHP. Fit a Spec Stage 3 clutch.' };
+  }
+  // Overrev: weakest component lets go past its RPM ceiling
+  const { limit, culprit } = rpmLimit(sel);
+  if (sel.animRpm > limit) {
+    if (culprit === 'rods') {
+      return { status: 'FAILED_THROWN_ROD', message: `Revved to ${sel.animRpm} rpm — stock rod bolts stretched and threw a rod (limit ${limit}). Forged bottom end revs to 8500.` };
+    }
+    if (culprit === 'head') {
+      return { status: 'FAILED_DROPPED_VALVE', message: `Revved to ${sel.animRpm} rpm — lifters pumped up, a valve floated and met a piston (head limit ${limit}). RN solid-lifter head revs to 7800.` };
+    }
+    return { status: 'FAILED_OIL_PUMP', message: `Revved to ${sel.animRpm} rpm — the stock pump cavitated and the bearings seized (pump limit ${limit}).` };
+  }
+  // Turbo overspeed: shaft past 100% of frame rating => compressor burst
+  const shaft = shaftSpeed(sel, sel.animRpm);
+  if (shaft > TURBO_MAX_SHAFT[sel.turboId]) {
+    return { status: 'FAILED_TURBO_OVERSPEED', message: `Turbo shaft at ${Math.round(shaft / 1000)}k rpm blew past the ${sel.turboId} speed limit — compressor burst, engine swallowed the debris.` };
   }
   // K24 without Japanifold is choked (warning, not failure)
   if (sel.turboId === 'k24' && sel.manifoldId !== 'japanifold-s60r') {

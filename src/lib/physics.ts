@@ -217,7 +217,7 @@ export function pressureRatio(boostPsi: number): number {
  * Effective boost target: the stock tune locks factory boost (the boost
  * slider only takes effect on Stage 1/2), capped by compressor capability.
  */
-export function effectiveBoostTarget(sel: EngineSelection): number {
+export function effectiveBoostTarget(sel: Pick<EngineSelection, 'turboId' | 'tuneId' | 'engineId' | 'boostPsi'>): number {
   const spec = TURBO_AIR[sel.turboId];
   const target = sel.tuneId === 'stock' ? ENGINE_STOCK_BOOST_PSI[sel.engineId] : sel.boostPsi;
   return Math.min(target, spec.maxBoostPsi);
@@ -276,7 +276,67 @@ export function chokeWhp(sel: EngineSelection): number {
 }
 
 /**
- * Full dyno sweep, idle → redline.
+ * Component RPM ceilings — community/engineering-grounded lore (no factory
+ * publishes these): rod-bolt stress rises with rpm², hydraulic lifters
+ * pump up, gear pumps cavitate. Forged bottom ends imply ARP hardware +
+ * billet pump gears.
+ */
+export const ROD_RPM_LIMIT: Record<RodsId, number> = { 'stock-n': 7000, 'stock-rn': 7200, 'forged-h': 8500 };
+export const HEAD_RPM_LIMIT: Record<HeadId, number> = { 'stock-n': 7000, 'rn-swap': 7800 };
+export const OIL_PUMP_RPM_LIMIT = 7600;
+export const OIL_PUMP_RPM_LIMIT_FORGED = 8600;
+
+/** Frame-size-corrected max turbo shaft speed (rpm). Big wheels turn slower. */
+export const TURBO_MAX_SHAFT: Record<TurboId, number> = {
+  'td04-13g': 200000,
+  'td04-13t': 200000,
+  'td04l-14t': 195000,
+  'td04-15g': 190000,
+  'td04-16t': 185000,
+  'td04-18t': 180000,
+  'td04-19t': 180000,
+  k24: 170000,
+};
+
+export interface RpmLimit {
+  limit: number;
+  culprit: 'rods' | 'head' | 'pump';
+}
+
+/** Weakest link of the rotating assembly / valvetrain / oiling. */
+export function rpmLimit(sel: Pick<EngineSelection, 'rodsId' | 'headId'>): RpmLimit {
+  const candidates: RpmLimit[] = [
+    { limit: ROD_RPM_LIMIT[sel.rodsId], culprit: 'rods' },
+    { limit: HEAD_RPM_LIMIT[sel.headId], culprit: 'head' },
+    { limit: sel.rodsId === 'forged-h' ? OIL_PUMP_RPM_LIMIT_FORGED : OIL_PUMP_RPM_LIMIT, culprit: 'pump' },
+  ];
+  return candidates.reduce((a, b) => (b.limit < a.limit ? b : a));
+}
+
+/**
+ * Rev limiter: factory redline on stock/Stage 1, raised to 8000 on Stage 2.
+ */
+export function maxRpm(sel: Pick<EngineSelection, 'tuneId' | 'engineId'>): number {
+  return sel.tuneId === 'stage2' ? 8000 : BASE_ENGINES[sel.engineId].redlineRpm;
+}
+
+/**
+ * Turbo shaft load as a fraction of frame rating — demand-driven: boost
+ * target vs. compressor capability, weighted by rpm^1.5 (flow energy) and
+ * frame size (small wheels work harder for the same demand). A stock setup
+ * cruises ≈ 0.5–0.7; past 1.0 the shaft bursts.
+ */
+export function shaftSpeed(sel: EngineSelection, rpm: number): number {
+  const spec = TURBO_AIR[sel.turboId];
+  const demand = effectiveBoostTarget(sel) / spec.maxBoostPsi; // 0..1
+  const flow = Math.pow(Math.max(0, rpm) / 8000, 1.5);
+  const sizeF = Math.pow(260 / chokeWhp(sel), 1.5);
+  return TURBO_MAX_SHAFT[sel.turboId] * (0.3 + 2.0 * demand * demand * flow * sizeF);
+}
+
+/**
+ * Full dyno sweep, idle → 8000 rpm (past the factory redline so overrev
+ * fall-off is visible; the rev limiter is enforced by the UI, not the curve).
  * Wheel torque = crank torque × drivetrain efficiency;
  * WHP = TQ(lb-ft) · rpm / 5252, clamped by the compressor choke.
  * Crank HP is the same figure before drivetrain loss (display only).
@@ -285,7 +345,7 @@ export function dynoCurve(sel: EngineSelection): DynoPoint[] {
   const engine = BASE_ENGINES[sel.engineId];
   const choke = chokeWhp(sel);
   const pts: DynoPoint[] = [];
-  for (let rpm = 800; rpm <= engine.redlineRpm; rpm += 200) {
+  for (let rpm = 800; rpm <= 8000; rpm += 200) {
     const tqCrank = torqueCrankNm(sel, rpm);
     const tqWheel = tqCrank * DRIVETRAIN_EFF;
     const boost = boostAtRpm(rpm, effectiveBoostTarget(sel), TURBO_AIR[sel.turboId], engine.redlineRpm);

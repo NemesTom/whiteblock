@@ -26,6 +26,10 @@ export type TransCoolerId = 'none' | 'external';
 export type EngineStatus =
   | 'OK'
   | 'FAILED_BENT_RODS'
+  | 'FAILED_THROWN_ROD'
+  | 'FAILED_DROPPED_VALVE'
+  | 'FAILED_OIL_PUMP'
+  | 'FAILED_TURBO_OVERSPEED'
   | 'FAILED_CRACKED_BLOCK'
   | 'FAILED_EXPLODED_GEARBOX'
   | 'FAILED_OVERWHELMED_TRANS';
@@ -76,11 +80,11 @@ export interface EngineSelection {
   focusedPart: string | null;
   /** Rotating-assembly playback + dyno sweep cursor. */
   animPlaying: boolean;
-  /** Visual crank speed in rpm (slow-motion) when not sweeping. */
-  animSpeed: number;
   sweepEnabled: boolean;
-  /** Live engine speed for the chart cursor / telemetry readout. */
+  /** Live engine speed for the chart cursor, crank, turbo and valves. */
   animRpm: number;
+  /** Toggleable 4-stroke cycle highlight on piston crowns. */
+  cycleHighlight: boolean;
 }
 
 export interface DerivedMetrics {

@@ -1,58 +1,106 @@
 'use client';
 
-import { Pause, Play, Repeat } from 'lucide-react';
+import { Flame, Pause, Play, Repeat } from 'lucide-react';
 import { useEngineStore } from '@/store/useEngineStore';
-import { useAnimRpm } from '@/lib/animClock';
+import { animClock, useAnimRpm } from '@/lib/animClock';
+import { maxRpm, rpmLimit } from '@/lib/physics';
+import { STROKE_COLORS } from '@/components/canvas/parts/engineGeometry';
+
+const STROKE_LABELS = ['Suck', 'Squeeze', 'Bang', 'Blow'] as const;
 
 /**
- * Floating playback bar for the rotating assembly: play/pause, visual
- * crank speed (slow-motion rpm so the motion stays visible), and the
- * dyno sweep mode that drives the crank and the chart cursor together.
+ * Floating playback bar: play/pause, engine-RPM slider (100 rpm steps,
+ * clamped by the tune's rev limiter), cycle-highlight toggle, and the
+ * dyno sweep mode that drives rpm + chart cursor together.
  */
 export function AnimControls() {
   const playing = useEngineStore((s) => s.animPlaying);
-  const speed = useEngineStore((s) => s.animSpeed);
   const sweep = useEngineStore((s) => s.sweepEnabled);
+  const cycle = useEngineStore((s) => s.cycleHighlight);
   const failed = useEngineStore((s) => s.status) !== 'OK';
+  const tuneId = useEngineStore((s) => s.tuneId);
+  const engineId = useEngineStore((s) => s.engineId);
+  const rodsId = useEngineStore((s) => s.rodsId);
+  const headId = useEngineStore((s) => s.headId);
   const set = useEngineStore((s) => s.set);
   const rpm = useAnimRpm();
 
+  const cap = maxRpm({ tuneId, engineId });
+  const { limit } = rpmLimit({ rodsId, headId });
+  const limited = cap < 8000;
+
+  const setRpm = (v: number) => {
+    const clamped = Math.min(cap, Math.max(800, Math.round(v / 100) * 100));
+    animClock.jumpTo(clamped);
+    set({ animRpm: clamped });
+  };
+
   return (
-    <div className="absolute bottom-4 left-4 z-10 flex items-center gap-2 rounded-full bg-zinc-900/90 py-1.5 pl-2 pr-4 text-white shadow-lg backdrop-blur">
-      <button
-        onClick={() => set({ animPlaying: !playing })}
-        className="rounded-full bg-sky-600 p-2 hover:bg-sky-500 disabled:opacity-40"
-        disabled={failed}
-        title={failed ? 'Engine seized — fix the build to spin again' : playing ? 'Pause crankshaft' : 'Spin crankshaft'}
-        aria-label={playing ? 'Pause' : 'Play'}
-      >
-        {playing ? <Pause size={15} /> : <Play size={15} />}
-      </button>
-      <label className="flex items-center gap-1.5 text-[11px] text-zinc-300" title="Visual crank speed (slow motion)">
-        <span className="font-mono">{speed}</span>
-        <input
-          type="range"
-          min={0}
-          max={120}
-          step={1}
-          value={speed}
-          disabled={sweep}
-          onChange={(e) => set({ animSpeed: Number(e.target.value) })}
-          className="w-20"
-          aria-label="Crank visual speed"
-        />
-      </label>
-      <button
-        onClick={() => set({ sweepEnabled: !sweep })}
-        className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-          sweep ? 'bg-amber-400 text-black' : 'bg-zinc-700 text-zinc-200 hover:bg-zinc-600'
-        }`}
-        title="Sweep the dyno: crank speed and chart cursor follow engine rpm"
-      >
-        <Repeat size={12} />
-        Sweep
-      </button>
-      <span className="font-mono text-[11px] text-amber-300">{Math.round(rpm)} rpm</span>
+    <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-1.5">
+      <div className="flex items-center gap-2 rounded-full bg-zinc-900/90 py-1.5 pl-2 pr-4 text-white shadow-lg backdrop-blur">
+        <button
+          onClick={() => set({ animPlaying: !playing })}
+          className="rounded-full bg-sky-600 p-2 hover:bg-sky-500 disabled:opacity-40"
+          disabled={failed}
+          title={failed ? 'Engine seized — lower the rpm and fix the build to spin again' : playing ? 'Pause crankshaft' : 'Spin crankshaft'}
+          aria-label={playing ? 'Pause' : 'Play'}
+        >
+          {playing ? <Pause size={15} /> : <Play size={15} />}
+        </button>
+        <label className="flex items-center gap-1.5 text-[11px] text-zinc-300" title="Engine speed — drives crank, turbo, valves and dyno cursor">
+          <span className="font-mono text-amber-300">{Math.round(rpm)}</span>
+          <input
+            type="range"
+            min={800}
+            max={8000}
+            step={100}
+            value={Math.round(rpm / 100) * 100}
+            disabled={sweep || failed}
+            onChange={(e) => setRpm(Number(e.target.value))}
+            className="w-36"
+            aria-label="Engine RPM"
+          />
+          <span className="font-mono text-zinc-500">{limited ? `LIMIT ${cap}` : '8000'}</span>
+        </label>
+        <button
+          onClick={() => set({ sweepEnabled: !sweep })}
+          disabled={failed}
+          className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold disabled:opacity-40 ${
+            sweep ? 'bg-amber-400 text-black' : 'bg-zinc-700 text-zinc-200 hover:bg-zinc-600'
+          }`}
+          title="Sweep the dyno: rpm climbs to the limiter and loops"
+        >
+          <Repeat size={12} />
+          Sweep
+        </button>
+        <button
+          onClick={() => set({ cycleHighlight: !cycle })}
+          className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+            cycle ? 'bg-orange-500 text-black' : 'bg-zinc-700 text-zinc-200 hover:bg-zinc-600'
+          }`}
+          title="Highlight the 4-stroke cycle on piston crowns"
+          aria-pressed={cycle}
+        >
+          <Flame size={12} />
+          Cycle
+        </button>
+      </div>
+      {cycle && (
+        <div className="flex items-center gap-2 self-start rounded-full bg-zinc-900/90 px-3 py-1 text-[10px] text-zinc-300 shadow-lg backdrop-blur">
+          {STROKE_LABELS.map((label, i) => (
+            <span key={label} className="flex items-center gap-1">
+              <span
+                className="inline-block h-2 w-2 rounded-full"
+                style={{ backgroundColor: STROKE_COLORS[i as 0 | 1 | 2 | 3] }}
+              />
+              {label}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="self-start rounded-full bg-zinc-900/90 px-3 py-1 font-mono text-[10px] text-zinc-400 shadow-lg backdrop-blur">
+        weakest link revs to {limit} rpm
+      </div>
     </div>
   );
 }
