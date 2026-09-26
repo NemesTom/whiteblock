@@ -1,6 +1,7 @@
 'use client';
 
-import { useEngineStore } from '@/store/useEngineStore';
+import { useState } from 'react';
+import { useEngineStore, selectMetrics } from '@/store/useEngineStore';
 import { BASE_ENGINES, ENGINE_STOCK_BOOST_PSI, displacementCc } from '@/lib/physics';
 import { firingOrderLabel } from '@/components/canvas/parts/engineGeometry';
 import { Accordion, OptionButton } from './Accordion';
@@ -16,9 +17,61 @@ const FOCUS: Record<string, string> = {
 
 export function Sidebar() {
   const s = useEngineStore();
+  const [copied, setCopied] = useState(false);
 
   const pick = (patch: Parameters<typeof s.set>[0], focusKey: string) => {
     s.set({ ...patch, focusedPart: FOCUS[focusKey] ?? null });
+  };
+
+  /** Serialize the full build (selection + status + peaks) for bug reports. */
+  const copyBuildJson = async () => {
+    const st = useEngineStore.getState();
+    const m = selectMetrics(st);
+    const payload = {
+      selection: {
+        engineId: st.engineId,
+        rodsId: st.rodsId,
+        headId: st.headId,
+        turboId: st.turboId,
+        manifoldId: st.manifoldId,
+        transmissionId: st.transmissionId,
+        sleevesId: st.sleevesId,
+        tuneId: st.tuneId,
+        clutchId: st.clutchId,
+        transCoolerId: st.transCoolerId,
+        converterId: st.converterId,
+        injectorId: st.injectorId,
+        fuelPumpId: st.fuelPumpId,
+        intercoolerId: st.intercoolerId,
+        downpipeId: st.downpipeId,
+        studsId: st.studsId,
+        valveSpringsId: st.valveSpringsId,
+        boostPsi: st.boostPsi,
+        animRpm: st.animRpm,
+      },
+      result: {
+        status: st.status,
+        statusMessage: st.statusMessage,
+        maxHp: m.maxHp,
+        maxCrankHp: m.maxCrankHp,
+        peakHpRpm: m.peakHpRpm,
+        maxTqNm: m.maxTqNm,
+      },
+    };
+    const text = JSON.stringify(payload, null, 2);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Clipboard API unavailable (permissions/insecure context): fallback.
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -26,12 +79,21 @@ export function Sidebar() {
       <div className="border-b border-zinc-800 px-4 py-4">
         <h1 className="text-base font-bold tracking-tight">Whiteblock Visualizer</h1>
         <p className="text-xs text-zinc-400">Tuning Configurator · Volvo 5/4/6-cyl</p>
-        <button
-          onClick={() => s.reset()}
-          className="mt-2 rounded bg-zinc-800 px-2 py-1 text-xs hover:bg-zinc-700"
-        >
-          Reset build
-        </button>
+        <div className="mt-2 flex gap-2">
+          <button
+            onClick={() => s.reset()}
+            className="rounded bg-zinc-800 px-2 py-1 text-xs hover:bg-zinc-700"
+          >
+            Reset build
+          </button>
+          <button
+            onClick={copyBuildJson}
+            className="rounded bg-zinc-800 px-2 py-1 text-xs hover:bg-zinc-700"
+            title="Copy the full build (all components + status + peaks) as JSON for bug reports"
+          >
+            {copied ? 'Copied!' : 'Copy build JSON'}
+          </button>
+        </div>
       </div>
 
       <Accordion title="Engine Block" defaultOpen>
@@ -155,6 +217,9 @@ export function Sidebar() {
         <OptionButton active={s.clutchId === 'spec-stage3'} label="Spec Stage 3 clutch" onClick={() => s.set({ clutchId: 'spec-stage3' })} />
         <OptionButton active={s.transCoolerId === 'none'} label="No trans cooler" onClick={() => s.set({ transCoolerId: 'none' })} />
         <OptionButton active={s.transCoolerId === 'external'} label="External trans cooler" onClick={() => s.set({ transCoolerId: 'external' })} />
+        <div className="mt-2 text-xs font-semibold text-zinc-300">Torque converter (autos)</div>
+        <OptionButton active={s.converterId === 'stock-converter'} label="Stock converter" onClick={() => s.set({ converterId: 'stock-converter' })} />
+        <OptionButton active={s.converterId === 'high-stall'} label="High-stall converter" sub="Holds the AW55 to 420 WHP" onClick={() => s.set({ converterId: 'high-stall' })} />
       </Accordion>
 
       <Accordion title="Fuel System">

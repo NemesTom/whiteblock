@@ -115,6 +115,7 @@ export function DynoChart() {
   const tuneId = useEngineStore((s) => s.tuneId);
   const clutchId = useEngineStore((s) => s.clutchId);
   const transCoolerId = useEngineStore((s) => s.transCoolerId);
+  const converterId = useEngineStore((s) => s.converterId);
   const boostPsi = useEngineStore((s) => s.boostPsi);
   const set = useEngineStore((s) => s.set);
   const liveRpm = useAnimRpm();
@@ -123,8 +124,8 @@ export function DynoChart() {
   const toggleLine = (key: string) => setHidden((h) => ({ ...h, [key]: !h[key] }));
 
   const cfg = useMemo(
-    () => ({ engineId, rodsId, headId, turboId, manifoldId, transmissionId, sleevesId, tuneId, clutchId, transCoolerId, boostPsi }),
-    [engineId, rodsId, headId, turboId, manifoldId, transmissionId, sleevesId, tuneId, clutchId, transCoolerId, boostPsi],
+    () => ({ engineId, rodsId, headId, turboId, manifoldId, transmissionId, sleevesId, tuneId, clutchId, transCoolerId, converterId, boostPsi }),
+    [engineId, rodsId, headId, turboId, manifoldId, transmissionId, sleevesId, tuneId, clutchId, transCoolerId, converterId, boostPsi],
   );
 
   const m = useMemo(
@@ -166,6 +167,7 @@ export function DynoChart() {
       tuneId: 'stock',
       clutchId: 'stock',
       transCoolerId: 'none',
+      converterId: 'stock-converter',
       boostPsi: ENGINE_STOCK_BOOST_PSI[engineId],
       cutaway: false,
       cutawayAxis: 'x',
