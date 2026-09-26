@@ -36,6 +36,7 @@ export type SleevesId = 'stock' | 'shimmed' | 'darton';
 export type TuneId = 'stock' | 'stage1' | 'stage2' | 'stage3';
 export type ClutchId = 'stock' | 'spec-stage3';
 export type TransCoolerId = 'none' | 'external';
+export type ConverterId = 'stock-converter' | 'high-stall';
 export type InjectorId = 'stock-350' | 'green-440' | 'deka-630' | 'ev14-1000' | 'ev14-1700';
 export type FuelPumpId = 'stock-pump' | 'walbro-255' | 'walbro-450';
 export type IntercoolerId = 'stock-smic' | 'do88-fmic' | 'race-fmic';
@@ -95,6 +96,7 @@ export interface EngineSelection {
   tuneId: TuneId;
   clutchId: ClutchId;
   transCoolerId: TransCoolerId;
+  converterId: ConverterId;
   injectorId: InjectorId;
   fuelPumpId: FuelPumpId;
   intercoolerId: IntercoolerId;
