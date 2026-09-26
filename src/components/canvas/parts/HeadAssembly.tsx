@@ -9,7 +9,10 @@ import { useEngineStore } from '@/store/useEngineStore';
 import { animClock } from '@/lib/animClock';
 import { clip } from './materials';
 import { OptionalModel, MODEL_PATHS } from './OptionalModel';
-import { cylX, deckY, engineLength, firingPhase } from './engineGeometry';
+import { cylX, deckY, engineLength, firingPhase, valveLift, VALVE_LIFT_MAX } from './engineGeometry';
+
+/** Lobe-nose offsets so each cam's nose meets its valves at max lift. */
+const CAM_OFFSET = [-Math.PI * 0.75, Math.PI * 0.75]; // [exhaust, intake]
 
 /**
  * Procedural whiteblock top end: head casting, signature wide alloy cam
@@ -31,11 +34,23 @@ export function HeadAssembly({ plane }: { plane: THREE.Plane }) {
   const headBase = deck + 0.05;
 
   const lobeRefs = useRef<Array<THREE.Group | null>>([]);
+  const moverRefs = useRef<Array<THREE.Group | null>>([]);
+  const springRefs = useRef<Array<THREE.Group | null>>([]);
   const cut = cutaway ? plane : null;
+  const valveFailed = useEngineStore((s) => s.status) === 'FAILED_DROPPED_VALVE';
 
   const mats = useMemo(
     () => ({
-      head: clip(new THREE.MeshStandardMaterial({ color: '#a7aeb6', metalness: 0.7, roughness: 0.42 }), cut),
+      head: clip(
+        new THREE.MeshStandardMaterial({
+          color: '#a7aeb6',
+          emissive: valveFailed ? '#ff2200' : '#000000',
+          emissiveIntensity: valveFailed ? 0.7 : 0,
+          metalness: 0.7,
+          roughness: 0.42,
+        }),
+        cut,
+      ),
       cover: clip(
         new THREE.MeshStandardMaterial({ color: isRN ? '#b9bec5' : '#c8ccd2', metalness: 0.8, roughness: 0.32 }),
         cut,
@@ -47,7 +62,7 @@ export function HeadAssembly({ plane }: { plane: THREE.Plane }) {
       plenum: clip(new THREE.MeshStandardMaterial({ color: '#8f979f', metalness: 0.75, roughness: 0.4 }), cut),
       brass: new THREE.MeshStandardMaterial({ color: '#b08d3f', metalness: 0.9, roughness: 0.3 }),
     }),
-    [cut, isRN],
+    [cut, isRN, valveFailed],
   );
 
   useEffect(
@@ -57,12 +72,24 @@ export function HeadAssembly({ plane }: { plane: THREE.Plane }) {
     [mats],
   );
 
-  // Camshafts turn at half crank speed; lobes keep valve-timing phasing.
+  // Cams turn at half crank speed with per-cylinder phasing; valves ride
+  // their 720° cycle (intake peaks mid-intake-stroke, exhaust mid-exhaust).
   useFrame(() => {
-    const a = animClock.angle / 2;
-    for (let i = 0; i < engine.cylinders; i++) {
-      const g = lobeRefs.current[i];
-      if (g) g.rotation.x = a + firingPhase(i, engine.cylinders) / 2;
+    const a = animClock.angle;
+    const nn = engine.cylinders;
+    for (let i = 0; i < nn; i++) {
+      const ph = firingPhase(i, nn);
+      for (let cam = 0; cam < 2; cam++) {
+        const g = lobeRefs.current[cam * nn + i];
+        if (g) g.rotation.x = a / 2 + ph / 2 + CAM_OFFSET[cam];
+      }
+      const lifts = [valveLift(a, ph, true), valveLift(a, ph, false)]; // [exhaust, intake]
+      for (let v = 0; v < 2; v++) {
+        const mover = moverRefs.current[i * 2 + v];
+        const spring = springRefs.current[i * 2 + v];
+        if (mover) mover.position.y = -lifts[v] * VALVE_LIFT_MAX;
+        if (spring) spring.scale.y = 1 - lifts[v] * 0.2;
+      }
     }
   });
 
@@ -146,21 +173,33 @@ export function HeadAssembly({ plane }: { plane: THREE.Plane }) {
         </group>
       ))}
 
-      {/* Valves + springs (static; lift animation is out of scope) */}
+      {/* Valves + springs: movers dip with lift, spring stacks compress */}
       {Array.from({ length: n }).map((_, i) =>
-        [-0.13, 0.13].map((z) => (
+        [-0.13, 0.13].map((z, v) => (
           <group key={`${i}-${z}`} position={[cylX(i, n), headBase + 0.02, z]}>
-            <mesh position={[0, 0.12, 0]} material={mats.valve}>
-              <cylinderGeometry args={[0.016, 0.016, 0.34, 8]} />
-            </mesh>
-            {[0.16, 0.21, 0.26].map((y) => (
-              <mesh key={y} position={[0, y, 0]} rotation={[Math.PI / 2, 0, 0]} material={mats.spring}>
-                <torusGeometry args={[0.045, 0.012, 8, 16]} />
+            <group
+              ref={(g) => {
+                springRefs.current[i * 2 + v] = g;
+              }}
+            >
+              {[0.16, 0.21, 0.26].map((y) => (
+                <mesh key={y} position={[0, y, 0]} rotation={[Math.PI / 2, 0, 0]} material={mats.spring}>
+                  <torusGeometry args={[0.045, 0.012, 8, 16]} />
+                </mesh>
+              ))}
+            </group>
+            <group
+              ref={(g) => {
+                moverRefs.current[i * 2 + v] = g;
+              }}
+            >
+              <mesh position={[0, 0.12, 0]} material={mats.valve}>
+                <cylinderGeometry args={[0.016, 0.016, 0.34, 8]} />
               </mesh>
-            ))}
-            <mesh position={[0, -0.05, 0]} material={mats.valve}>
-              <cylinderGeometry args={[0.05, 0.032, 0.04, 12]} />
-            </mesh>
+              <mesh position={[0, -0.05, 0]} material={mats.valve}>
+                <cylinderGeometry args={[0.05, 0.032, 0.04, 12]} />
+              </mesh>
+            </group>
           </group>
         )),
       )}

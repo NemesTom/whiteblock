@@ -14,9 +14,13 @@ import {
   firingPhase,
   pinTopY,
   rodUnits,
+  strokeOf,
   CYL_SPACING,
+  SLOWMO,
+  STROKE_COLORS,
   Y_CRANK,
 } from './engineGeometry';
+import { maxRpm } from '@/lib/physics';
 
 /**
  * The moving heart of the whiteblock: a real crankshaft (main journals,
@@ -31,7 +35,7 @@ import {
 export function RotatingAssembly() {
   const engineId = useEngineStore((s) => s.engineId);
   const rodsId = useEngineStore((s) => s.rodsId);
-  const rodsFailed = useEngineStore((s) => s.status) === 'FAILED_BENT_RODS';
+  const rodsFailed = useEngineStore((s) => s.status === 'FAILED_BENT_RODS' || s.status === 'FAILED_THROWN_ROD');
 
   const engine = BASE_ENGINES[engineId];
   const n = engine.cylinders;
@@ -44,6 +48,7 @@ export function RotatingAssembly() {
   const crankRef = useRef<THREE.Group>(null);
   const pistonRefs = useRef<Array<THREE.Group | null>>([]);
   const rodRefs = useRef<Array<THREE.Group | null>>([]);
+  const crownRefs = useRef<Array<THREE.Mesh | null>>([]);
   const angleRef = useRef(0);
   const lastMirror = useRef(0);
 
@@ -55,13 +60,27 @@ export function RotatingAssembly() {
       piston: new THREE.MeshStandardMaterial({ color: '#e8e4de', metalness: 0.85, roughness: 0.28 }),
       ring: new THREE.MeshStandardMaterial({ color: '#2a2d31', metalness: 0.8, roughness: 0.4 }),
       dark: new THREE.MeshStandardMaterial({ color: '#26282c', metalness: 0.7, roughness: 0.45 }),
+      // Shared 4-stroke highlight materials (swapped onto crowns, never rebuilt)
+      stroke: ([0, 1, 2, 3] as const).map(
+        (s) =>
+          new THREE.MeshStandardMaterial({
+            color: '#e8e4de',
+            emissive: STROKE_COLORS[s],
+            emissiveIntensity: 1.1,
+            metalness: 0.6,
+            roughness: 0.3,
+          }),
+      ),
     }),
     [],
   );
 
   useEffect(
     () => () => {
-      Object.values(mats).forEach((m) => m.dispose());
+      Object.values(mats).forEach((m) => {
+        if (Array.isArray(m)) m.forEach((x) => x.dispose());
+        else m.dispose();
+      });
     },
     [mats],
   );
@@ -79,18 +98,17 @@ export function RotatingAssembly() {
     const st = useEngineStore.getState();
     const eng = BASE_ENGINES[st.engineId];
     const failedNow = st.status !== 'OK';
+    const cap = maxRpm(st);
     let angle = angleRef.current;
     let rpm = animClock.rpm;
 
     if (st.animPlaying && !failedNow) {
-      let visualRev: number;
       if (st.sweepEnabled) {
-        rpm += (dt * (eng.redlineRpm - 800)) / 22; // full sweep ≈ 22 s
-        if (rpm > eng.redlineRpm) rpm = 800;
-        visualRev = 0.25 + 1.5 * ((rpm - 800) / (eng.redlineRpm - 800));
-      } else {
-        visualRev = st.animSpeed / 60;
+        rpm += (dt * (cap - 800)) / 22; // full sweep ≈ 22 s, to the limiter
+        if (rpm > cap) rpm = 800;
       }
+      // Slow-motion crank: honest fraction of real speed so motion is visible
+      const visualRev = (rpm / 60) * SLOWMO;
       angle += dt * visualRev * Math.PI * 2;
       angleRef.current = angle;
       animClock.advance(angle, rpm);
@@ -105,6 +123,7 @@ export function RotatingAssembly() {
 
     const rr = crankThrow(st.engineId);
     const ll = rodUnits(st.rodsId);
+    const highlight = st.cycleHighlight && !failedNow;
     for (let i = 0; i < eng.cylinders; i++) {
       const th = angle + firingPhase(i, eng.cylinders);
       const top = pinTopY(th, rr, ll);
@@ -117,6 +136,8 @@ export function RotatingAssembly() {
         rod.position.set(cylX(i, eng.cylinders), (top + py) / 2, pz / 2);
         rod.rotation.x = -Math.asin(Math.max(-1, Math.min(1, pz / ll)));
       }
+      const crown = crownRefs.current[i];
+      if (crown) crown.material = highlight ? mats.stroke[strokeOf(th, firingPhase(i, eng.cylinders))] : mats.piston;
     }
   });
 
@@ -180,7 +201,13 @@ export function RotatingAssembly() {
           }}
         >
           {/* Crown */}
-          <mesh position={[0, 0.145, 0]} material={mats.piston}>
+          <mesh
+            position={[0, 0.145, 0]}
+            material={mats.piston}
+            ref={(g) => {
+              crownRefs.current[i] = g;
+            }}
+          >
             <cylinderGeometry args={[br * 0.97, br * 0.97, 0.09, 24]} />
           </mesh>
           {/* Ring lands */}
