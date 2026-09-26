@@ -16,13 +16,19 @@ import {
 } from 'chart.js';
 import { useEngineStore, selectMetrics } from '@/store/useEngineStore';
 import { animClock, useAnimRpm } from '@/lib/animClock';
-import { BASE_ENGINES, ENGINE_STOCK_BOOST_PSI, ENGINE_STOCK_TURBO, dynoCurve, effectiveBoostTarget } from '@/lib/physics';
+import { BASE_ENGINES, ENGINE_STOCK_BOOST_PSI, ENGINE_STOCK_TURBO, dynoCurve, effectiveBoostTarget, maxRpm } from '@/lib/physics';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
-/** Overlay plugin: sweep cursor + peak markers, driven by a live ref. */
-const cursorRef: { rpm: number; peakHp: { x: number; y: number } | null; peakTq: { x: number; y: number } | null } = {
+/** Overlay plugin: sweep cursor + peak markers + redline, driven by a live ref. */
+const cursorRef: {
+  rpm: number;
+  redline: number;
+  peakHp: { x: number; y: number } | null;
+  peakTq: { x: number; y: number } | null;
+} = {
   rpm: 800,
+  redline: 6500,
   peakHp: null,
   peakTq: null,
 };
@@ -35,6 +41,23 @@ const dynoOverlay = {
     const x = scales.x;
     const area = chart.chartArea;
     if (!x || !area) return;
+    // Factory redline / limiter marker
+    const rx = x.getPixelForValue(cursorRef.redline);
+    if (rx >= area.left && rx <= area.right) {
+      ctx.save();
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(rx, area.top);
+      ctx.lineTo(rx, area.bottom);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#ef4444';
+      ctx.font = '10px monospace';
+      ctx.fillText('REDLINE', rx - 52, area.top + 12);
+      ctx.restore();
+    }
     // Sweep cursor
     const px = x.getPixelForValue(cursorRef.rpm);
     if (px >= area.left && px <= area.right) {
@@ -114,9 +137,9 @@ export function DynoChart() {
         cutawayFlip: false,
         focusedPart: null,
         animPlaying: true,
-        animSpeed: 36,
         sweepEnabled: false,
         animRpm: 800,
+        cycleHighlight: false,
       }),
     [cfg],
   );
@@ -142,14 +165,14 @@ export function DynoChart() {
       cutawayFlip: false,
       focusedPart: null,
       animPlaying: true,
-      animSpeed: 36,
       sweepEnabled: false,
       animRpm: 800,
+      cycleHighlight: false,
     });
   }, [engineId]);
 
   const engine = BASE_ENGINES[engineId];
-  const effBoost = effectiveBoostTarget({ ...cfg } as Parameters<typeof effectiveBoostTarget>[0]);
+  const effBoost = effectiveBoostTarget(cfg);
 
   const peakHp = m.curve.reduce((a, b) => (b.hp > a.hp ? b : a), m.curve[0]);
   const peakTq = m.curve.reduce((a, b) => (b.tqNm > a.tqNm ? b : a), m.curve[0]);
@@ -157,6 +180,7 @@ export function DynoChart() {
   // an effect so render stays pure.
   useEffect(() => {
     cursorRef.rpm = liveRpm;
+    cursorRef.redline = engine.redlineRpm;
     cursorRef.peakHp = { x: peakHp.rpm, y: peakHp.hp };
     cursorRef.peakTq = { x: peakTq.rpm, y: peakTq.tqNm };
   });
@@ -211,7 +235,7 @@ export function DynoChart() {
   const onChartClick = (event: ChartEvent, _els: unknown, chart: ChartType<'line'>) => {
     const xScale = chart.scales.x as unknown as { getValueForPixel(px: number): number };
     const rpm = Math.round(xScale.getValueForPixel(event.x ?? 0) / 50) * 50;
-    const clamped = Math.min(engine.redlineRpm, Math.max(800, rpm));
+    const clamped = Math.min(maxRpm({ tuneId, engineId }), Math.max(800, rpm));
     animClock.jumpTo(clamped);
     set({ animRpm: clamped, sweepEnabled: false });
   };
