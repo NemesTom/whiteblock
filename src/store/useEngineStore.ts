@@ -47,9 +47,14 @@ export function evaluateFailure(sel: EngineSelection): { status: EngineStatus; m
   const engine = BASE_ENGINES[sel.engineId];
   const hp = maxHorsepower(sel);
 
-  // Rule A — the torque spike: 19T + >18psi + stock rods => bent rods
-  if (sel.turboId === 'td04-19t' && sel.boostPsi > 18 && (sel.rodsId === 'stock-n' || sel.rodsId === 'stock-rn')) {
-    return { status: 'FAILED_BENT_RODS', message: 'Violent 19T torque spike bent the stock rods. Dyno output dropped to zero.' };
+  // Rule A — the torque spike: big-wheel HL turbo (18T/19T) + >18psi
+  // + stock rods => bent rods
+  if (
+    (sel.turboId === 'td04-18t' || sel.turboId === 'td04-19t') &&
+    sel.boostPsi > 18 &&
+    (sel.rodsId === 'stock-n' || sel.rodsId === 'stock-rn')
+  ) {
+    return { status: 'FAILED_BENT_RODS', message: `Violent ${sel.turboId === 'td04-18t' ? '18T' : '19T'} torque spike bent the stock rods. Dyno output dropped to zero.` };
   }
   // Stock N-rods limit: 15G-class turbo pushing past 300 WHP at low rpm
   if (hp > ROD_LIMIT_WHP[sel.rodsId]) {
@@ -104,14 +109,17 @@ export function selectMetrics(sel: EngineSelection) {
   const curve = dynoCurve(sel);
   const failed = evaluateFailure(sel).status !== 'OK';
   const peak = curve.reduce((a, b) => (b.hp > a.hp ? b : a), curve[0]);
+  const peakCrank = curve.reduce((a, b) => (b.hpCrank > a.hpCrank ? b : a), curve[0]);
   return {
     displacementCc: disp,
     compressionRatio: engine.compressionRatio,
     rodStrokeRatio: Math.round(rsr * 100) / 100,
     volumetricEfficiency: ve,
     maxHp: failed ? 0 : maxHp,
+    maxCrankHp: failed ? 0 : peakCrank.hpCrank,
     maxTqNm: failed ? 0 : Math.max(...curve.map((p) => p.tqNm)),
     peakHpRpm: peak.rpm,
-    curve: failed ? curve.map((p) => ({ ...p, hp: 0, tqNm: 0 })) : curve,
+    peakCrankHpRpm: peakCrank.rpm,
+    curve: failed ? curve.map((p) => ({ ...p, hp: 0, hpCrank: 0, tqNm: 0 })) : curve,
   };
 }

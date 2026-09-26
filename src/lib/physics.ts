@@ -97,8 +97,12 @@ export interface TurboAirSpec {
 }
 
 export const TURBO_AIR: Record<TurboId, TurboAirSpec> = {
+  'td04-13g': { spoolStartRpm: 1200, fullBoostRpm: 2000, maxBoostPsi: 15, topEndDropPsi: 8.0, chokeWhp: 230 },
+  'td04-13t': { spoolStartRpm: 1250, fullBoostRpm: 2100, maxBoostPsi: 16, topEndDropPsi: 7.0, chokeWhp: 250 },
+  'td04l-14t': { spoolStartRpm: 1300, fullBoostRpm: 2150, maxBoostPsi: 16, topEndDropPsi: 7.0, chokeWhp: 255 },
   'td04-15g': { spoolStartRpm: 1300, fullBoostRpm: 2200, maxBoostPsi: 17, topEndDropPsi: 8.0, chokeWhp: 260 },
   'td04-16t': { spoolStartRpm: 1400, fullBoostRpm: 2300, maxBoostPsi: 20, topEndDropPsi: 6.5, chokeWhp: 300 },
+  'td04-18t': { spoolStartRpm: 1450, fullBoostRpm: 2350, maxBoostPsi: 22, topEndDropPsi: 5.5, chokeWhp: 320 },
   'td04-19t': { spoolStartRpm: 1500, fullBoostRpm: 2400, maxBoostPsi: 24, topEndDropPsi: 6.5, chokeWhp: 340 },
   k24: { spoolStartRpm: 1400, fullBoostRpm: 2300, maxBoostPsi: 24, topEndDropPsi: 4.5, chokeWhp: 350 },
 };
@@ -275,6 +279,7 @@ export function chokeWhp(sel: EngineSelection): number {
  * Full dyno sweep, idle → redline.
  * Wheel torque = crank torque × drivetrain efficiency;
  * WHP = TQ(lb-ft) · rpm / 5252, clamped by the compressor choke.
+ * Crank HP is the same figure before drivetrain loss (display only).
  */
 export function dynoCurve(sel: EngineSelection): DynoPoint[] {
   const engine = BASE_ENGINES[sel.engineId];
@@ -285,7 +290,14 @@ export function dynoCurve(sel: EngineSelection): DynoPoint[] {
     const tqWheel = tqCrank * DRIVETRAIN_EFF;
     const boost = boostAtRpm(rpm, effectiveBoostTarget(sel), TURBO_AIR[sel.turboId], engine.redlineRpm);
     const hp = Math.min(choke, ((tqWheel / 1.35581795) * rpm) / 5252);
-    pts.push({ rpm, hp: Math.round(Math.max(0, hp)), tqNm: Math.round(Math.max(0, tqWheel)), boostPsi: Math.round(boost * 10) / 10 });
+    const hpCrank = Math.min(choke / DRIVETRAIN_EFF, ((tqCrank / 1.35581795) * rpm) / 5252);
+    pts.push({
+      rpm,
+      hp: Math.round(Math.max(0, hp)),
+      hpCrank: Math.round(Math.max(0, hpCrank)),
+      tqNm: Math.round(Math.max(0, tqWheel)),
+      boostPsi: Math.round(boost * 10) / 10,
+    });
   }
   return pts;
 }
