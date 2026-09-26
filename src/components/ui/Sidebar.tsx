@@ -17,61 +17,92 @@ const FOCUS: Record<string, string> = {
 
 export function Sidebar() {
   const s = useEngineStore();
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
+  const [fallbackText, setFallbackText] = useState<string | null>(null);
 
   const pick = (patch: Parameters<typeof s.set>[0], focusKey: string) => {
     s.set({ ...patch, focusedPart: FOCUS[focusKey] ?? null });
   };
 
   /** Serialize the full build (selection + status + peaks) for bug reports. */
-  const copyBuildJson = async () => {
+  const buildJsonText = () => {
     const st = useEngineStore.getState();
     const m = selectMetrics(st);
-    const payload = {
-      selection: {
-        engineId: st.engineId,
-        rodsId: st.rodsId,
-        headId: st.headId,
-        turboId: st.turboId,
-        manifoldId: st.manifoldId,
-        transmissionId: st.transmissionId,
-        sleevesId: st.sleevesId,
-        tuneId: st.tuneId,
-        clutchId: st.clutchId,
-        transCoolerId: st.transCoolerId,
-        converterId: st.converterId,
-        injectorId: st.injectorId,
-        fuelPumpId: st.fuelPumpId,
-        intercoolerId: st.intercoolerId,
-        downpipeId: st.downpipeId,
-        studsId: st.studsId,
-        valveSpringsId: st.valveSpringsId,
-        boostPsi: st.boostPsi,
-        animRpm: st.animRpm,
+    return JSON.stringify(
+      {
+        selection: {
+          engineId: st.engineId,
+          rodsId: st.rodsId,
+          headId: st.headId,
+          turboId: st.turboId,
+          manifoldId: st.manifoldId,
+          transmissionId: st.transmissionId,
+          sleevesId: st.sleevesId,
+          tuneId: st.tuneId,
+          clutchId: st.clutchId,
+          transCoolerId: st.transCoolerId,
+          converterId: st.converterId,
+          injectorId: st.injectorId,
+          fuelPumpId: st.fuelPumpId,
+          intercoolerId: st.intercoolerId,
+          downpipeId: st.downpipeId,
+          studsId: st.studsId,
+          valveSpringsId: st.valveSpringsId,
+          boostPsi: st.boostPsi,
+          animRpm: st.animRpm,
+        },
+        result: {
+          status: st.status,
+          statusMessage: st.statusMessage,
+          maxHp: m.maxHp,
+          maxCrankHp: m.maxCrankHp,
+          peakHpRpm: m.peakHpRpm,
+          maxTqNm: m.maxTqNm,
+        },
       },
-      result: {
-        status: st.status,
-        statusMessage: st.statusMessage,
-        maxHp: m.maxHp,
-        maxCrankHp: m.maxCrankHp,
-        peakHpRpm: m.peakHpRpm,
-        maxTqNm: m.maxTqNm,
-      },
-    };
-    const text = JSON.stringify(payload, null, 2);
+      null,
+      2,
+    );
+  };
+
+  /** Synchronous legacy copy — must run inside the click gesture. */
+  const legacyCopy = (text: string): boolean => {
     try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      // Clipboard API unavailable (permissions/insecure context): fallback.
       const ta = document.createElement('textarea');
       ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
       document.body.appendChild(ta);
       ta.select();
-      document.execCommand('copy');
+      const ok = document.execCommand('copy');
       document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
     }
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2000);
+  };
+
+  const copyBuildJson = async () => {
+    const text = buildJsonText();
+    // 1. Legacy sync path first: valid only inside the user gesture.
+    if (legacyCopy(text)) {
+      setCopyState('copied');
+      window.setTimeout(() => setCopyState('idle'), 2000);
+      return;
+    }
+    // 2. Async Clipboard API (needs secure context + permission).
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyState('copied');
+      window.setTimeout(() => setCopyState('idle'), 2000);
+      return;
+    } catch (err) {
+      console.error('[whiteblock] clipboard copy failed:', err);
+    }
+    // 3. Last resort: modal with selectable text for manual copy.
+    setFallbackText(text);
+    setCopyState('error');
   };
 
   return (
@@ -88,12 +119,33 @@ export function Sidebar() {
           </button>
           <button
             onClick={copyBuildJson}
-            className="rounded bg-zinc-800 px-2 py-1 text-xs hover:bg-zinc-700"
+            className={`rounded px-2 py-1 text-xs hover:bg-zinc-700 ${copyState === 'error' ? 'bg-red-800' : 'bg-zinc-800'}`}
             title="Copy the full build (all components + status + peaks) as JSON for bug reports"
           >
-            {copied ? 'Copied!' : 'Copy build JSON'}
+            {copyState === 'copied' ? 'Copied!' : copyState === 'error' ? 'Copy failed — see below' : 'Copy build JSON'}
           </button>
         </div>
+        {fallbackText !== null && (
+          <div className="mt-2 rounded border border-red-700 bg-zinc-900 p-2">
+            <p className="mb-1 text-[11px] text-zinc-300">Automatic copy failed — select all and copy manually:</p>
+            <textarea
+              readOnly
+              value={fallbackText}
+              rows={8}
+              className="w-full rounded bg-black p-1 font-mono text-[10px] text-zinc-200"
+              onFocus={(e) => e.target.select()}
+            />
+            <button
+              onClick={() => {
+                setFallbackText(null);
+                setCopyState('idle');
+              }}
+              className="mt-1 rounded bg-zinc-800 px-2 py-1 text-xs hover:bg-zinc-700"
+            >
+              Close
+            </button>
+          </div>
+        )}
       </div>
 
       <Accordion title="Engine Block" defaultOpen>
